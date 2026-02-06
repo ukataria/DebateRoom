@@ -11,6 +11,7 @@ from fastapi import WebSocket
 
 from backend.agents.base import AgentConfig, Message, start_agent_stream
 from backend.agents.defense import create_defense_config
+from backend.logging_config import get_session_logger
 from backend.models import (
     AgentStreamMessage,
     CourtDirective,
@@ -61,11 +62,10 @@ class DebateSession:
         self.transcript: list[TranscriptEntry] = []
         self.evidence: list[Evidence] = []
         self.court_directives: list[CourtDirective] = []
-        self.intervention_queue: asyncio.Queue[Intervention] = (
-            asyncio.Queue()
-        )
+        self.intervention_queue: asyncio.Queue[Intervention] = asyncio.Queue()
         self.defense_score: float = 100.0
         self.prosecution_score: float = 100.0
+        self.log = get_session_logger(session_id)
 
 
 # --- Helpers ---
@@ -83,12 +83,13 @@ async def _transition(
     ws: WebSocket,
 ) -> None:
     """Move to a new phase and notify the frontend."""
+    prev = session.phase.value
     session.phase = phase
     await _send(ws, PhaseChangeMessage(phase=phase.value))
-    logger.info(
+    session.log.info(
         "phase_transition",
-        session=session.session_id,
-        phase=phase.value,
+        from_phase=prev,
+        to_phase=phase.value,
     )
 
 
@@ -107,28 +108,29 @@ def _build_history(session: DebateSession) -> list[Message]:
     ]
 
     for entry in session.transcript:
-        messages.append({
-            "role": "assistant",
-            "content": (
-                f"[{entry.agent.upper()}]: {entry.content}"
-            ),
-        })
+        messages.append(
+            {
+                "role": "assistant",
+                "content": (f"[{entry.agent.upper()}]: {entry.content}"),
+            }
+        )
 
     # Inject any court directives
     for directive in session.court_directives:
         evidence_text = ""
         if directive.new_evidence:
             evidence_text = "\nNew evidence:\n" + "\n".join(
-                f"- {e.title}: {e.snippet}"
-                for e in directive.new_evidence
+                f"- {e.title}: {e.snippet}" for e in directive.new_evidence
             )
-        messages.append({
-            "role": "user",
-            "content": (
-                f"COURT DIRECTIVE (from the decision-maker): "
-                f'"{directive.content}"{evidence_text}'
-            ),
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": (
+                    f"COURT DIRECTIVE (from the decision-maker): "
+                    f'"{directive.content}"{evidence_text}'
+                ),
+            }
+        )
 
     return messages
 
@@ -148,36 +150,50 @@ async def run_agent_turn(
     Returns True if the turn completed normally,
     False if it was interrupted by a user intervention.
     """
+    slog = session.log.bind(agent=config.role, phase=session.phase.value)
+    slog.info("agent_turn_start")
+
     history = _build_history(session)
+    slog.debug(
+        "agent_context_built",
+        history_length=len(history),
+    )
 
     # runner.run(stream=True) returns an async iterable directly
     stream = start_agent_stream(runner, config, history)
 
     partial_response = ""
+    chunk_count = 0
 
     async for chunk in stream:
+        chunk_count += 1
+
         # Check for intervention between chunks
         try:
             intervention = session.intervention_queue.get_nowait()
             # Save partial response
-            session.transcript.append(TranscriptEntry(
-                agent=config.role,
-                content=partial_response,
-                phase=session.phase.value,
-                interrupted=True,
-            ))
-            await _send(ws, AgentStreamMessage(
-                agent=config.role,
-                content="",
-                done=True,
-                interrupted=True,
-            ))
-            await _handle_intervention(
-                session, intervention, ws
+            session.transcript.append(
+                TranscriptEntry(
+                    agent=config.role,
+                    content=partial_response,
+                    phase=session.phase.value,
+                    interrupted=True,
+                )
             )
-            logger.info(
+            await _send(
+                ws,
+                AgentStreamMessage(
+                    agent=config.role,
+                    content="",
+                    done=True,
+                    interrupted=True,
+                ),
+            )
+            await _handle_intervention(session, intervention, ws)
+            slog.info(
                 "agent_interrupted",
-                agent=config.role,
+                chunks_before_interrupt=chunk_count,
+                partial_length=len(partial_response),
                 intervention=intervention.content,
             )
             return False
@@ -195,28 +211,36 @@ async def run_agent_turn(
         ):
             token = chunk.choices[0].delta.content
             partial_response += token
-            await _send(ws, AgentStreamMessage(
-                agent=config.role,
-                content=token,
-                done=False,
-            ))
+            await _send(
+                ws,
+                AgentStreamMessage(
+                    agent=config.role,
+                    content=token,
+                    done=False,
+                ),
+            )
 
     # Completed without interruption
-    session.transcript.append(TranscriptEntry(
-        agent=config.role,
-        content=partial_response,
-        phase=session.phase.value,
-        interrupted=False,
-    ))
-    await _send(ws, AgentStreamMessage(
-        agent=config.role,
-        content="",
-        done=True,
-    ))
-    logger.info(
+    session.transcript.append(
+        TranscriptEntry(
+            agent=config.role,
+            content=partial_response,
+            phase=session.phase.value,
+            interrupted=False,
+        )
+    )
+    await _send(
+        ws,
+        AgentStreamMessage(
+            agent=config.role,
+            content="",
+            done=True,
+        ),
+    )
+    slog.info(
         "agent_turn_complete",
-        agent=config.role,
-        length=len(partial_response),
+        total_chunks=chunk_count,
+        response_length=len(partial_response),
     )
     return True
 
@@ -233,13 +257,16 @@ async def _handle_intervention(
     """
     directive = CourtDirective(content=intervention.content)
     session.court_directives.append(directive)
-    await _send(ws, CourtDirectiveMessage(
-        content=intervention.content,
-    ))
-    logger.info(
+    await _send(
+        ws,
+        CourtDirectiveMessage(
+            content=intervention.content,
+        ),
+    )
+    session.log.info(
         "intervention_handled",
-        session=session.session_id,
         content=intervention.content,
+        total_directives=len(session.court_directives),
     )
 
 
@@ -256,6 +283,8 @@ async def run_debate(
     This is the minimal flow to prove the pipeline works.
     Additional phases will be added incrementally.
     """
+    session.log.info("debate_flow_start", dilemma=session.dilemma)
+
     # --- Defense Opening ---
     await _transition(session, DebatePhase.DEFENSE_OPENING, ws)
     defense_config = create_defense_config()
@@ -263,7 +292,8 @@ async def run_debate(
 
     # --- Done (MVP) ---
     await _transition(session, DebatePhase.COMPLETE, ws)
-    logger.info(
-        "debate_complete",
-        session=session.session_id,
+    session.log.info(
+        "debate_flow_complete",
+        transcript_entries=len(session.transcript),
+        evidence_count=len(session.evidence),
     )

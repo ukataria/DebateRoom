@@ -13,7 +13,6 @@ import sys
 
 import websockets
 
-
 DILEMMA = "Should CMU require AI ethics courses for all CS majors?"
 WS_URL = "ws://localhost:8000/ws/test-session-001"
 
@@ -62,10 +61,7 @@ async def main() -> None:
                         print(f"  [{agent} finished]")
 
             elif msg_type == "court_directive":
-                print(
-                    f"\n  COURT DIRECTIVE: "
-                    f"{msg['content']}\n"
-                )
+                print(f"\n  COURT DIRECTIVE: {msg['content']}\n")
 
             elif msg_type == "error":
                 print(f"\n  ERROR: {msg['message']}")

@@ -32,3 +32,8 @@ select = ["E", "F", "I", "W"]
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.0",
+]

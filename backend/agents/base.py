@@ -6,7 +6,10 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+import structlog
 from dedalus_labs import DedalusRunner
+
+logger = structlog.get_logger()
 
 # Message dicts follow the OpenAI-compatible format:
 # {"role": "system"|"user"|"assistant", "content": "..."}
@@ -60,6 +63,14 @@ def start_agent_stream(
     See: https://docs.dedaluslabs.ai/sdk/streaming
     """
     messages = build_messages(config, history)
+
+    logger.debug(
+        "agent_stream_start",
+        role=config.role,
+        models=config.models,
+        mcp_servers=config.mcp_servers,
+        message_count=len(messages),
+    )
 
     return runner.run(
         messages=messages,

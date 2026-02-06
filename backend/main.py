@@ -11,10 +11,14 @@ from dedalus_labs import AsyncDedalus, DedalusRunner
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.logging_config import (
+    cleanup_session_logger,
+    get_session_logger,
+    setup_logging,
+)
 from backend.models import (
     ErrorMessage,
     Intervention,
-    new_session_id,
 )
 from backend.orchestrator import DebateSession, run_debate
 
@@ -29,10 +33,16 @@ runner: DedalusRunner | None = None
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Create the Dedalus client and runner once at startup."""
     global runner
+
+    log_dir = setup_logging()
+    logger.info("logging_ready", log_dir=str(log_dir))
+
     client = AsyncDedalus()
     runner = DedalusRunner(client)
     logger.info("dedalus_client_ready")
+
     yield
+
     logger.info("shutting_down")
 
 
@@ -63,6 +73,9 @@ async def handle_ws(
     await websocket.accept()
     assert runner is not None, "Runner not initialized"
 
+    slog = get_session_logger(session_id)
+    slog.info("ws_connected")
+
     session: DebateSession | None = None
     start_event = asyncio.Event()
     dilemma_holder: list[str] = []
@@ -72,19 +85,25 @@ async def handle_ws(
         while True:
             data = await websocket.receive_json()
             msg_type = data.get("type")
+            slog.debug(
+                "ws_message_received",
+                msg_type=msg_type,
+            )
 
             if msg_type == "start" and session is None:
                 dilemma_holder.append(data.get("dilemma", ""))
                 start_event.set()
+                slog.info(
+                    "start_message_received",
+                    dilemma=data.get("dilemma", ""),
+                )
 
             elif msg_type == "intervention" and session:
-                await session.intervention_queue.put(
-                    Intervention(content=data.get("content", ""))
-                )
-                logger.info(
+                content = data.get("content", "")
+                await session.intervention_queue.put(Intervention(content=content))
+                slog.info(
                     "intervention_received",
-                    session=session_id,
-                    content=data.get("content", ""),
+                    content=content,
                 )
 
     listener = asyncio.create_task(listen_for_client())
@@ -98,22 +117,14 @@ async def handle_ws(
             session_id=session_id,
             dilemma=dilemma,
         )
-        logger.info(
-            "debate_started",
-            session=session_id,
-            dilemma=dilemma,
-        )
+        slog.info("debate_started", dilemma=dilemma)
 
         await run_debate(session, runner, websocket)
 
     except WebSocketDisconnect:
-        logger.info("client_disconnected", session=session_id)
+        slog.info("client_disconnected")
     except Exception as e:
-        logger.error(
-            "debate_error",
-            session=session_id,
-            error=str(e),
-        )
+        slog.error("debate_error", error=str(e), exc_info=True)
         try:
             msg = ErrorMessage(message=str(e))
             await websocket.send_json(msg.model_dump())
@@ -121,6 +132,8 @@ async def handle_ws(
             pass
     finally:
         listener.cancel()
+        cleanup_session_logger(session_id)
+        slog.info("ws_cleanup_complete")
 
 
 # --- Health Check ---
