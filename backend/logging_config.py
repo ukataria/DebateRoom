@@ -32,7 +32,7 @@ def setup_logging() -> Path:
     global _LOG_DIR
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    _LOG_DIR = Path.home() / "logs" / f"courtroom_{timestamp}"
+    _LOG_DIR = Path.cwd() / "logs" / f"courtroom_{timestamp}"
     _LOG_DIR.mkdir(parents=True, exist_ok=True)
     (_LOG_DIR / "sessions").mkdir(exist_ok=True)
 
