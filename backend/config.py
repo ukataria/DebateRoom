@@ -39,8 +39,11 @@ CROSS_EXAMINATION_MODELS: list[str] = [
     "openai/gpt-4.1-mini",
 ]
 
-# Single strongest model for judgment (no handoff)
-JUDGE_MODEL: str = "openai/gpt-5.2"  # "anthropic/claude-opus-4-6"
+# Single strongest model for judgment (handoff)
+JUDGE_MODEL: list[str] = [
+    "openai/gpt-5.2",
+    "anthropic/claude-opus-4-5",
+]  # "anthropic/claude-opus-4-6"
 
 # --- MCP Server Slugs ---
 MCP_BRAVE_SEARCH: str = "windsor/brave-search-mcp"
