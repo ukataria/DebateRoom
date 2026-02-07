@@ -9,10 +9,13 @@
   --color-court-text: #fafafa;
   --color-court-text-dim: #a1a1aa;
   --color-court-text-muted: #71717a;
-  --color-defense: #60a5fa;
-  --color-defense-dim: #2563eb;
+  
+  --color-defense: #A1B46A;
+  --color-defense-dim: #E9EDC9;
+
   --color-prosecution: #f87171;
   --color-prosecution-dim: #dc2626;
+  
   --color-evidence: #a78bfa;
   --color-evidence-dim: #7c3aed;
   --color-gold: #fbbf24;
@@ -32,7 +35,7 @@ body {
   background-color: var(--color-court-bg);
   color: var(--color-court-text);
   font-family:
-    "Inter",
+    "Space Mono",
     system-ui,
     -apple-system,
     sans-serif;
@@ -80,5 +83,35 @@ body {
   }
   40% {
     opacity: 1;
+  }
+}
+
+@keyframes evidence-whoosh {
+  0% {
+    opacity: 0;
+    transform: translateX(40px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-4px) scale(1.01);
+  }
+  80% {
+    transform: translateX(2px) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes evidence-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(167, 139, 250, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0);
   }
 }

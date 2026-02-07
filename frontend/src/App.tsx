@@ -48,7 +48,7 @@ function App() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-court-bg">
+    <div className="flex h-screen flex-col bg-court-bg">
       {/* INTAKE: Dilemma Input */}
       {isIntake && (
         <DilemmaInput
@@ -63,8 +63,8 @@ function App() {
           {/* Top Bar */}
           <header className="flex items-center justify-between border-b border-court-border bg-court-surface px-6 py-3">
             <div className="flex items-center gap-3">
-              <Scale className="h-5 w-5 text-gold" />
-              <h1 className="text-lg font-bold text-court-text">
+              <Scale className="h-6 w-6 text-gold" />
+              <h1 className="text-xl font-bold text-court-text">
                 Courtroom
               </h1>
               {useDemo && (

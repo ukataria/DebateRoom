@@ -1,13 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Search,
-  CheckCircle2,
   Loader2,
   BookOpen,
   Globe,
   GraduationCap,
   FileText,
   ExternalLink,
+  ChevronDown,
 } from "lucide-react";
 import type { EvidenceItem, ToolCallEvent } from "../types";
 
@@ -52,21 +52,36 @@ export function EvidenceTrail({
     }
   }, [highlightedId]);
 
+  // Auto-scroll to bottom when new evidence arrives
+  const prevCountRef = useRef(evidence.length);
+  useEffect(() => {
+    if (
+      evidence.length > prevCountRef.current &&
+      scrollContainerRef.current
+    ) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+    prevCountRef.current = evidence.length;
+  }, [evidence.length]);
+
   return (
     <div className="flex h-full flex-col rounded-xl border border-court-border bg-court-surface">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-court-border px-4 py-3">
         <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-evidence" />
-          <span className="text-sm font-semibold text-evidence">
+          <BookOpen className="h-5 w-5 text-evidence" />
+          <span className="text-base font-semibold text-evidence">
             Evidence Trail
           </span>
           {isResearchActive && (
-            <Loader2 className="h-3 w-3 animate-spin text-evidence" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-evidence" />
           )}
         </div>
         {evidence.length > 0 && (
-          <span className="text-xs text-court-text-muted">
+          <span className="text-sm text-court-text-muted">
             {evidence.length} sources
           </span>
         )}
@@ -76,18 +91,16 @@ export function EvidenceTrail({
       <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto px-3 py-3"
-        style={{ minHeight: "300px", maxHeight: "60vh" }}
       >
         {!hasContent ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-court-text-muted">
             <Search className="h-6 w-6 opacity-40" />
-            <span className="text-xs">
+            <span className="text-sm">
               Evidence will appear here
             </span>
           </div>
         ) : (
           <div className="space-y-2">
-            {/* Evidence items from backend */}
             {evidence.map((ev, i) => (
               <EvidenceCard
                 key={ev.id}
@@ -97,7 +110,6 @@ export function EvidenceTrail({
               />
             ))}
 
-            {/* Tool calls (legacy / fallback) */}
             {toolCalls.map((tc) => (
               <ToolCallCard key={tc.id} call={tc} />
             ))}
@@ -117,62 +129,87 @@ function EvidenceCard({
   index: number;
   isHighlighted: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const config =
     SOURCE_TYPE_CONFIG[evidence.source_type] ??
     SOURCE_TYPE_CONFIG.web;
   const Icon = config.icon;
 
+  // Auto-expand when highlighted via citation click
+  useEffect(() => {
+    if (isHighlighted) setExpanded(true);
+  }, [isHighlighted]);
+
   return (
     <div
       data-evidence-id={evidence.id}
-      className={`rounded-lg border p-3 transition-all duration-500 ${
+      className={`overflow-hidden rounded-lg border transition-all duration-300 ${
         isHighlighted
           ? "border-evidence bg-evidence/10 ring-1 ring-evidence/40"
           : "border-court-border bg-court-panel"
       }`}
-      style={{ animation: "fade-in 0.3s ease-out" }}
+      style={{
+        animation: `evidence-whoosh 0.4s ease-out ${index * 0.15}s both, evidence-glow 0.8s ease-out ${index * 0.15}s both`,
+      }}
     >
-      {/* Title + source type + index badge */}
-      <div className="mb-1.5 flex items-start justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded bg-evidence/15 font-mono text-[9px] font-bold text-evidence">
-            {index}
-          </span>
-          <CheckCircle2 className="h-3 w-3 shrink-0 text-confirmed" />
-          <p className="text-xs font-medium leading-snug text-court-text">
-            {evidence.title}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Icon className="h-3 w-3 text-court-text-muted" />
-          <span className="text-[10px] text-court-text-muted">
-            {config.label}
-          </span>
-        </div>
-      </div>
-
-      {/* Snippet */}
-      <p className="text-xs leading-relaxed text-court-text-dim">
-        {evidence.snippet}
-      </p>
-
-      {/* Footer: source + date */}
-      <div className="mt-2 flex items-center justify-between">
-        <span className="text-[10px] text-court-text-muted">
-          {evidence.source}
-          {evidence.date ? ` \u00B7 ${evidence.date}` : ""}
+      {/* Clickable header row */}
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-court-border/20"
+      >
+        {/* Big evidence ID badge */}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-evidence/20 font-mono text-sm font-bold text-evidence">
+          {index}
         </span>
-        {evidence.url && (
-          <a
-            href={evidence.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-0.5 text-[10px] text-evidence hover:underline"
-          >
-            <ExternalLink className="h-2.5 w-2.5" />
-            Source
-          </a>
-        )}
+
+        {/* Title */}
+        <p className="min-w-0 flex-1 text-xs font-medium text-court-text line-clamp-10">
+          {evidence.title}
+        </p>
+
+        {/* Source type + chevron */}
+        {/* <Icon className="h-4 w-4 shrink-0 text-court-text-muted" /> */}
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-court-text-muted transition-transform duration-200 ${
+            expanded ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {/* Collapsible body */}
+      <div
+        className={`grid transition-[grid-template-rows] duration-200 ${
+          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="border-t border-court-border/50 px-3 pb-2.5 pt-2">
+            <p className="text-xs leading-relaxed text-court-text-dim">
+              {evidence.snippet}
+            </p>
+
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-court-text-muted">
+                {config.label}
+                {" \u00B7 "}
+                {evidence.source}
+                {evidence.date ? ` \u00B7 ${evidence.date}` : ""}
+              </span>
+              {evidence.url && (
+                <a
+                  href={evidence.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-0.5 text-xs text-evidence hover:underline"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Source
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -184,24 +221,26 @@ function ToolCallCard({ call }: { call: ToolCallEvent }) {
   return (
     <div
       className="rounded-lg border border-court-border bg-court-panel p-3"
-      style={{ animation: "fade-in 0.3s ease-out" }}
+      style={{ animation: "evidence-whoosh 0.4s ease-out" }}
     >
       <div className="mb-1 flex items-center gap-2">
         {isPending ? (
-          <Loader2 className="h-3 w-3 animate-spin text-evidence" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-evidence" />
         ) : (
-          <CheckCircle2 className="h-3 w-3 text-confirmed" />
+          <span className="font-mono text-xs font-bold text-confirmed">
+            done
+          </span>
         )}
-        <span className="text-xs font-medium text-evidence">
+        <span className="text-sm font-medium text-evidence">
           {call.tool}
         </span>
       </div>
-      <p className="text-xs leading-relaxed text-court-text-dim">
+      <p className="text-sm leading-relaxed text-court-text-dim">
         {call.query}
       </p>
       {call.snippet && (
         <div className="mt-2 rounded border border-court-border bg-court-bg/50 p-2">
-          <p className="text-xs text-court-text-dim">
+          <p className="text-sm text-court-text-dim">
             {call.snippet}
           </p>
         </div>

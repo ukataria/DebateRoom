@@ -86,7 +86,7 @@ function parseArguments(text: string): {
     }
   }
 
-  if (sequential.length < 2) {
+  if (sequential.length === 0) {
     return { preamble: text, arguments: [], conclusion: "" };
   }
 
@@ -234,9 +234,9 @@ export function CourtPanel({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-court-border px-4 py-3">
         <div className="flex items-center gap-2">
-          <Icon className={`h-4 w-4 ${config.color}`} />
+          <Icon className={`h-5 w-5 ${config.color}`} />
           <span
-            className={`text-sm font-semibold ${config.color}`}
+            className={`text-base font-semibold ${config.color}`}
           >
             {config.label}
           </span>
@@ -259,7 +259,7 @@ export function CourtPanel({
           )}
         </div>
         {hasStructure && !isActive && (
-          <span className="text-xs text-court-text-muted">
+          <span className="text-sm text-court-text-muted">
             {parsed.arguments.length} arguments
           </span>
         )}
@@ -269,7 +269,7 @@ export function CourtPanel({
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-3 py-3"
-        style={{ minHeight: "300px", maxHeight: "60vh" }}
+        style={{ minHeight: "300px",}}
       >
         {text ? (
           hasStructure ? (
@@ -281,7 +281,7 @@ export function CourtPanel({
               onCitationClick={onCitationClick}
             />
           ) : (
-            <div className="px-1 text-sm leading-relaxed text-court-text">
+            <div className="px-1 text-base leading-relaxed text-court-text">
               <InlineText text={text} sourceMap={sourceMap} onCitationClick={onCitationClick} />
               {isActive && (
                 <BlinkingCursor color={config.color} />
@@ -289,7 +289,7 @@ export function CourtPanel({
             </div>
           )
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-court-text-muted">
+          <div className="flex h-full items-center justify-center text-base text-court-text-muted">
             {isActive
               ? "Preparing argument..."
               : "Awaiting turn..."}
@@ -319,26 +319,6 @@ export function CourtPanel({
           ))}
         </div>
       )}
-
-      {/* Confidence Bar */}
-      <div className="border-t border-court-border px-4 py-3">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-court-text-muted">
-            Confidence
-          </span>
-          <span
-            className={`font-mono font-semibold ${config.color}`}
-          >
-            {confidence}%
-          </span>
-        </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-court-panel">
-          <div
-            className={`h-full rounded-full ${config.barColor} transition-all duration-700 ease-out`}
-            style={{ width: `${confidence}%` }}
-          />
-        </div>
-      </div>
     </div>
   );
 }
@@ -362,7 +342,7 @@ function StructuredView({
     <div className="space-y-2.5">
       {/* Preamble - shown as a subtle intro */}
       {parsed.preamble && (
-        <p className="px-1 text-xs leading-relaxed text-court-text-muted">
+        <p className="px-1 text-sm leading-relaxed text-court-text-muted">
           <InlineText text={parsed.preamble} sourceMap={sourceMap} onCitationClick={onCitationClick} />
         </p>
       )}
@@ -378,17 +358,17 @@ function StructuredView({
         >
           <div className="mb-1.5 flex items-center gap-2">
             <span
-              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${config.numberBg} text-xs font-bold ${config.numberText}`}
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${config.numberBg} text-sm font-bold ${config.numberText}`}
             >
               {arg.number}
             </span>
             <h4
-              className={`text-xs font-semibold ${config.chipText}`}
+              className={`text-sm font-semibold ${config.chipText}`}
             >
               {arg.title}
             </h4>
           </div>
-          <p className="text-xs leading-relaxed text-court-text-dim">
+          <p className="text-sm leading-relaxed text-court-text-dim">
             <InlineText text={arg.body} sourceMap={sourceMap} onCitationClick={onCitationClick} />
           </p>
         </div>
@@ -398,7 +378,7 @@ function StructuredView({
       {parsed.conclusion && (
         <div className="mt-1 flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/5 p-3">
           <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-gold" />
-          <p className="text-xs font-medium leading-relaxed text-court-text">
+          <p className="text-sm font-medium leading-relaxed text-court-text">
             <InlineText text={parsed.conclusion} sourceMap={sourceMap} onCitationClick={onCitationClick} />
           </p>
         </div>
@@ -429,7 +409,7 @@ function InlineText({
         key={key}
         type="button"
         onClick={() => onCitationClick(entry.evidenceId)}
-        className="mx-0.5 inline-flex cursor-pointer items-center rounded bg-evidence/15 px-1.5 py-0.5 align-text-bottom font-mono text-[10px] font-bold text-evidence transition-colors hover:bg-evidence/30"
+        className="inline cursor-pointer font-mono text-xs font-bold text-evidence transition-colors hover:text-evidence-dim"
         title="Jump to evidence"
       >
         [{entry.index}]
@@ -445,9 +425,9 @@ function InlineText({
           const id = part.slice(6, -1);
           return renderCitation(id, String(i));
         }
-        // Also handle bare tool_XXXX references (no brackets)
+        // Also handle tool_XXXX references with or without brackets
         const bareToolParts = part.split(
-          /(tool_[a-f0-9]{4,8})/gi
+          /\[?(tool_[a-f0-9]{4,8})\]?/gi
         );
         if (bareToolParts.length > 1) {
           return bareToolParts.map((sub, j) => {
