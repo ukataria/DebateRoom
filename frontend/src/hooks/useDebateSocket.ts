@@ -229,12 +229,16 @@ export function useDebateSocket(url: string) {
     }
   }, []);
 
-  const startDebate = useCallback(
-    (dilemma: string, imageData: string | null = null) => {
-      send({ type: "start", dilemma, image_data: imageData });
-    },
-    [send]
-  );
+  // Inside useDebateSocket.ts
+  const startDebate = (dilemma: string, filePaths: string[] = []) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ 
+        type: "start", 
+        dilemma, 
+        file_paths: filePaths 
+      }));
+    }
+  };
 
   const sendIntervention = useCallback(
     (content: string) => {

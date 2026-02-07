@@ -27,9 +27,9 @@ function App() {
     startedLive.current = true;
   }
   const useDemo = !ws.connected && !startedLive.current;
-  const { state, startDebate, sendIntervention } = useDemo
-    ? demo
-    : ws;
+  
+  // Destructure the appropriate startDebate function
+  const { state, startDebate, sendIntervention } = useDemo ? demo : ws;
   const connected = ws.connected;
 
   const isIntake = state.phase === "INTAKE";
@@ -47,12 +47,19 @@ function App() {
     }, 3000);
   }, []);
 
+  // Wrapper to handle the type signature difference if useDemoMode hasn't been updated yet
+  const handleStart = (dilemma: string, filePaths: string[]) => {
+    // If demo mode is active, it might not accept filePaths, but JS will just ignore the extra arg
+    // If it is the WS version, it will receive the filePaths
+    startDebate(dilemma, filePaths);
+  };
+
   return (
     <div className="flex h-screen flex-col bg-court-bg">
       {/* INTAKE: Dilemma Input */}
       {isIntake && (
         <DilemmaInput
-          onSubmit={startDebate}
+          onSubmit={handleStart}
           isDemo={useDemo}
         />
       )}

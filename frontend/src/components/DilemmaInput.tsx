@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Scale, ArrowRight, Sparkles } from "lucide-react";
+import { useState, useRef } from "react";
+import { Scale, ArrowRight, Sparkles, Paperclip, X, Loader2, FileText } from "lucide-react";
 
 const EXAMPLE_CHIPS = [
   "Should CMU require AI ethics courses?",
@@ -8,8 +8,14 @@ const EXAMPLE_CHIPS = [
   "Is universal basic income viable for the US?",
 ];
 
+interface UploadedFile {
+  original_name: string;
+  file_path: string;
+}
+
 interface DilemmaInputProps {
-  onSubmit: (dilemma: string) => void;
+  // Update: onSubmit now accepts filePaths
+  onSubmit: (dilemma: string, filePaths: string[]) => void;
   isDemo?: boolean;
 }
 
@@ -18,11 +24,16 @@ export function DilemmaInput({
   isDemo,
 }: DilemmaInputProps) {
   const [input, setInput] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    onSubmit(trimmed);
+    // Extract just the paths to send to backend
+    const filePaths = files.map(f => f.file_path);
+    onSubmit(trimmed, filePaths);
   };
 
   const handleKeyDown = (
@@ -32,6 +43,41 @@ export function DilemmaInput({
       e.preventDefault();
       handleSubmit();
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", e.target.files[0]);
+
+    try {
+      // Assuming your backend runs on localhost:8000
+      const response = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const data = await response.json();
+      setFiles(prev => [...prev, { 
+        original_name: data.original_name, 
+        file_path: data.file_path 
+      }]);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Failed to upload file");
+    } finally {
+      setIsUploading(false);
+      // Reset input so same file can be selected again if needed
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeFile = (indexToRemove: number) => {
+    setFiles(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
   return (
@@ -70,14 +116,52 @@ export function DilemmaInput({
             className="w-full resize-none rounded-xl border border-court-border bg-court-panel px-4 py-3 text-lg text-court-text placeholder-court-text-muted outline-none transition-colors focus:border-gold"
             rows={3}
           />
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-court-text-muted">
-              <Sparkles className="h-3 w-3" />
-              <span>Press Enter to submit</span>
+          
+          {/* File Attachments List */}
+          {files.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {files.map((file, idx) => (
+                <div key={idx} className="flex items-center gap-2 rounded-md bg-court-panel border border-court-border px-3 py-1.5 text-xs text-court-text">
+                  <FileText className="h-3 w-3 text-gold" />
+                  <span className="max-w-[150px] truncate">{file.original_name}</span>
+                  <button 
+                    onClick={() => removeFile(idx)}
+                    className="ml-1 text-court-text-muted hover:text-red-400"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
             </div>
+          )}
+
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               {/* Hidden File Input */}
+               <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileSelect}
+                disabled={isUploading}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex items-center gap-2 text-xs text-court-text-muted hover:text-gold transition-colors disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Paperclip className="h-4 w-4" />
+                )}
+                {isUploading ? "Uploading..." : "Attach document"}
+              </button>
+            </div>
+            
             <button
               onClick={handleSubmit}
-              disabled={!input.trim()}
+              disabled={!input.trim() || isUploading}
               className="flex items-center gap-2 rounded-lg bg-gold px-5 py-2.5 text-sm font-semibold text-court-bg transition-all hover:shadow-lg hover:shadow-gold/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Open Court

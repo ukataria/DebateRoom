@@ -28,6 +28,8 @@ from backend.models import (
     PhaseChangeMessage,
     TranscriptEntry,
 )
+import httpx
+import os
 
 logger = structlog.get_logger()
 
@@ -65,7 +67,7 @@ class DebateSession:
     a Pydantic model.
     """
 
-    def __init__(self, session_id: str, dilemma: str) -> None:
+    def __init__(self, session_id: str, dilemma: str, file_paths=list[str]) -> None:
         self.session_id = session_id
         self.dilemma = dilemma
         self.phase = DebatePhase.INTAKE
@@ -76,6 +78,23 @@ class DebateSession:
         self.defense_score: float = 100.0
         self.prosecution_score: float = 100.0
         self.log = get_session_logger(session_id)
+
+        response = httpx.post(
+            "https://api.dedaluslabs.ai/v1/ocr",
+            headers={"Authorization": f"Bearer {os.environ['DEDALUS_API_KEY']}"},
+            json={
+                "model": "mistral-ocr-latest",
+                "document": {
+                    "type": "document_url",
+                    "document_url": f"file://{file_paths[0]}",
+                },
+            },
+            timeout=120.0,
+        )
+
+        for page in response.json()["pages"]:
+            print(f"Page {page['index']}:\n{page['markdown'][:200]}...")
+        self.file_paths = file_paths
 
 
 # --- Helpers ---
@@ -338,9 +357,7 @@ async def _run_cross_examination(
         # --- Prosecution challenges ---
         await _transition(session, DebatePhase.CROSS_EXAM_1, ws)
         pros_config = create_prosecution_cross_config()
-        pros_done = await run_agent_turn(
-            session, pros_config, citations, runner, ws
-        )
+        pros_done = await run_agent_turn(session, pros_config, citations, runner, ws)
         exchange_count += 1
 
         # If interrupted, the turn still counts — continue to defense
@@ -353,9 +370,7 @@ async def _run_cross_examination(
         # --- Defense responds ---
         await _transition(session, DebatePhase.CROSS_EXAM_2, ws)
         def_config = create_defense_cross_config()
-        def_done = await run_agent_turn(
-            session, def_config, citations, runner, ws
-        )
+        def_done = await run_agent_turn(session, def_config, citations, runner, ws)
         exchange_count += 1
 
         if not def_done:
@@ -374,6 +389,8 @@ async def _run_cross_examination(
         "cross_examination_complete",
         total_turns=exchange_count,
     )
+
+
 # --- Main Debate Flow ---
 
 
