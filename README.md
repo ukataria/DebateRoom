@@ -133,7 +133,7 @@ The frontend connects to the backend WebSocket at `ws://localhost:8000/ws/sessio
 
 ### Hosted Version
 
-A public deployment is available at [debateroom-production.up.railway.app](https://debateroom-production.up.railway.app/).
+A public deployment is available at [courtroom.up.railway.app](https://courtroom.up.railway.app/).
 
 ---
 
