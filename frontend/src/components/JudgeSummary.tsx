@@ -117,10 +117,10 @@ export function JudgeSummary({
   return (
     <div
       ref={scrollRef}
-      className="mx-auto w-full max-w-5xl px-6 py-8"
+      className="mx-auto w-full shrink-0 px-6 py-8 border-t border-gold/20"
       style={{ animation: "fade-in 0.6s ease-out" }}
     >
-      <div className="rounded-2xl border border-gold/30 bg-court-surface p-6">
+      <div className="rounded-2xl mx-auto border max-w-6xl w-full border-gold/30 bg-court-surface p-6">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -366,7 +366,7 @@ function InlineText({
         key={key}
         type="button"
         onClick={() => onCitationClick(entry.evidenceId)}
-        className="inline cursor-pointer font-mono text-xs font-bold text-evidence transition-colors hover:text-evidence-dim"
+        className="mx-0.5 inline-block rounded hover:bg-white/10 px-0.5 cursor-pointer font-mono text-xs font-bold text-evidence transition-colors"
         title="Jump to evidence"
       >
         [{entry.index}]
@@ -374,7 +374,7 @@ function InlineText({
     );
   };
 
-  const parts = text.split(/(\[TOOL:[^\]]+\])/g);
+  const parts = text.split(/\s*(\[TOOL:[^\]]+\])\s*/g);
   return (
     <>
       {parts.map((part, i) => {
@@ -383,7 +383,7 @@ function InlineText({
           return renderCitation(id, String(i));
         }
         const bareToolParts = part.split(
-          /\[?(tool_[a-f0-9]{4,8})\]?/gi
+          /\s*\[?(tool_[a-f0-9]{4,8})\]?\s*/gi
         );
         if (bareToolParts.length > 1) {
           return bareToolParts.map((sub, j) => {

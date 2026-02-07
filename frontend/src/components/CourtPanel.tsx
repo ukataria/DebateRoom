@@ -354,7 +354,7 @@ function StructuredView({
               >
                 {arg.number}
               </span>
-              <h4 className={`text-xs font-semibold uppercase tracking-wide ${config.chipText}`}>
+              <h4 className={`text-sm font-semibold uppercase tracking-wide ${config.chipText}`}>
                 {arg.title}
               </h4>
             </div>
@@ -398,7 +398,7 @@ export function InlineText({
         key={key}
         type="button"
         onClick={() => onCitationClick(entry.evidenceId)}
-        className="mx-0.5 inline-block rounded hover:bg-white/10 px-0.5 font-mono text-[10px] font-bold text-evidence transition-colors"
+        className="inline-block rounded hover:bg-white/10 px-0.5 font-mono text-xs font-bold text-evidence transition-colors"
         title="Jump to evidence"
       >
         [{entry.index}]
