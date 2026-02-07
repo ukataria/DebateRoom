@@ -10,8 +10,11 @@ from dedalus_labs import DedalusRunner
 from fastapi import WebSocket
 
 from backend.agents.base import AgentConfig, Message, start_agent_stream
-from backend.agents.defense import create_defense_config
-from backend.agents.prosecutor import create_prosecution_config
+from backend.agents.defense import create_defense_config, create_defense_cross_config
+from backend.agents.prosecutor import (
+    create_prosecution_config,
+    create_prosecution_cross_config,
+)
 from backend.agents.researcher import create_researcher_config
 from backend.logging_config import get_session_logger
 from backend.agents.tools import Citation
@@ -349,6 +352,16 @@ async def run_debate(
     await run_agent_turn(
         session, prosecution_config, citations, runner, ws
     )
+
+    # --- Cross-Examination 1: Prosecution challenges Defense ---
+    await _transition(session, DebatePhase.CROSS_EXAM_1, ws)
+    pros_cross = create_prosecution_cross_config(citations)
+    await run_agent_turn(session, pros_cross, citations, runner, ws)
+
+    # --- Cross-Examination 2: Defense responds ---
+    await _transition(session, DebatePhase.CROSS_EXAM_2, ws)
+    def_cross = create_defense_cross_config(citations)
+    await run_agent_turn(session, def_cross, citations, runner, ws)
 
     # --- Done ---
     await _transition(session, DebatePhase.COMPLETE, ws)
