@@ -11,6 +11,7 @@ from fastapi import WebSocket
 
 from backend.agents.base import AgentConfig, Message, start_agent_stream
 from backend.agents.defense import create_defense_config
+from backend.agents.prosecutor import create_prosecution_config
 from backend.agents.researcher import create_researcher_config
 from backend.logging_config import get_session_logger
 from backend.agents.tools import Citation
@@ -321,10 +322,12 @@ async def run_debate(
     runner: DedalusRunner,
     ws: WebSocket,
 ) -> None:
-    """Run the MVP debate flow: defense opening.
+    """Run the debate flow: research, defense, prosecution.
 
-    This is the minimal flow to prove the pipeline works.
-    Additional phases will be added incrementally.
+    Each agent can make its own MCP tool calls for
+    additional evidence. New findings are tracked via
+    the shared Citation queue and forwarded to the
+    frontend in real time.
     """
     session.log.info("debate_flow_start", dilemma=session.dilemma)
 
@@ -337,10 +340,17 @@ async def run_debate(
 
     # --- Defense Opening ---
     await _transition(session, DebatePhase.DEFENSE_OPENING, ws)
-    defense_config = create_defense_config()
+    defense_config = create_defense_config(citations)
     await run_agent_turn(session, defense_config, citations, runner, ws)
 
-    # --- Done (MVP) ---
+    # --- Prosecution Opening ---
+    await _transition(session, DebatePhase.PROSECUTION_OPENING, ws)
+    prosecution_config = create_prosecution_config(citations)
+    await run_agent_turn(
+        session, prosecution_config, citations, runner, ws
+    )
+
+    # --- Done ---
     await _transition(session, DebatePhase.COMPLETE, ws)
     session.log.info(
         "debate_flow_complete",

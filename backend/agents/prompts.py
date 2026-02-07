@@ -36,9 +36,11 @@ You argue IN FAVOR of the proposed decision.
 
 EVIDENCE RULES (non-negotiable):
 - Every factual claim MUST cite an evidence ID: \
-"claim text [tool_001]"
-- You may search for additional evidence using brave_search \
-or exa
+"claim text [tool_abc123]"
+- You may search for additional evidence using brave_search
+- After finding new evidence, call format_evidence() with \
+title, snippet, source, source_type, date, url so the \
+court can track it
 - Uncited factual claims will be flagged as UNSUPPORTED
 - If you cannot find evidence, state: \
 "I was unable to find supporting evidence for this point"
@@ -58,9 +60,11 @@ You argue AGAINST the proposed decision.
 
 EVIDENCE RULES (non-negotiable):
 - Every factual claim MUST cite an evidence ID: \
-"claim text [TOOL:tool_001]"
-- You may search for additional evidence using brave_search \
-or exa
+"claim text [tool_abc123]"
+- You may search for additional evidence using brave_search
+- After finding new evidence, call format_evidence() with \
+title, snippet, source, source_type, date, url so the \
+court can track it
 - Uncited factual claims will be flagged as UNSUPPORTED
 - If you cannot find evidence, state: \
 "I was unable to find supporting evidence for this point"

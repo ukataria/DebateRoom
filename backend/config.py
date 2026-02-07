@@ -18,6 +18,14 @@ DEFENSE_MODELS: list[str] = [
     "openai/gpt-4.1",
 ]
 
+# GPT for tool calls, Claude for persuasive writing
+PROSECUTION_MODELS: list[str] = [
+    # "openai/gpt-5.2",
+    # "anthropic/claude-sonnet-4-5-20250929",
+    "openai/gpt-4.1-mini",
+    "openai/gpt-4.1",
+]
+
 # Fast models for research-heavy tool calling
 RESEARCHER_MODELS: list[str] = [
     "openai/gpt-4.1-mini",
