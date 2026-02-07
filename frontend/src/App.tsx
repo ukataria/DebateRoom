@@ -14,9 +14,15 @@ import { CrossExamView } from "./components/CrossExamView";
 import "./index.css";
 
 const API_BASE =
-  import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
+  import.meta.env.VITE_API_BASE ??
+  (window.location.protocol === "https:"
+    ? `${window.location.origin}`
+    : "http://localhost:8000");
 const WS_URL =
-  import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws/session";
+  import.meta.env.VITE_WS_URL ??
+  (window.location.protocol === "https:"
+    ? `wss://${window.location.host}/ws/session`
+    : "ws://localhost:8000/ws/session");
 
 function App() {
   const ws = useDebateSocket(WS_URL);
