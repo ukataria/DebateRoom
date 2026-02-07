@@ -6,7 +6,8 @@ import { DilemmaInput } from "./components/DilemmaInput";
 import { CaseBrief } from "./components/CaseBrief";
 import { CourtPanel } from "./components/CourtPanel";
 import { EvidenceTrail } from "./components/EvidenceTrail";
-import { InterventionBar } from "./components/InterventionBar";
+// InterventionBar temporarily disabled
+// import { InterventionBar } from "./components/InterventionBar";
 import { CourtDirective } from "./components/CourtDirective";
 import { JudgeSummary } from "./components/JudgeSummary";
 import { PhaseIndicator } from "./components/PhaseIndicator";
@@ -16,8 +17,9 @@ import "./index.css";
 const API_BASE =
   import.meta.env.VITE_API_BASE ??
   (window.location.protocol === "https:"
-    ? `${window.location.origin}`
+    ? window.location.origin
     : "http://localhost:8000");
+
 const WS_URL =
   import.meta.env.VITE_WS_URL ??
   (window.location.protocol === "https:"
@@ -36,7 +38,7 @@ function App() {
   const useDemo = !ws.connected && !startedLive.current;
   
   // Destructure the appropriate startDebate function
-  const { state, startDebate, sendIntervention, startCrossExam } = useDemo ? demo : ws;
+  const { state, startDebate, sendIntervention: _sendIntervention, startCrossExam } = useDemo ? demo : ws;
 
   const resetDebate = useCallback(() => {
     startedLive.current = false;

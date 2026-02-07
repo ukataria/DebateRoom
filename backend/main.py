@@ -223,9 +223,7 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# --- Frontend Static Files ---
-# Serve the built React app. Must be mounted AFTER all API
-# routes so /health, /upload, /ws/* take priority.
+# --- Frontend Static Files (production) ---
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 

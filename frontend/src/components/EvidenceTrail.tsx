@@ -133,7 +133,6 @@ function EvidenceCard({
   const config =
     SOURCE_TYPE_CONFIG[evidence.source_type] ??
     SOURCE_TYPE_CONFIG.web;
-  const Icon = config.icon;
 
   // Auto-expand when highlighted via citation click
   useEffect(() => {

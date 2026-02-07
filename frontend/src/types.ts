@@ -7,6 +7,8 @@ export type DebatePhase =
   | "AWAITING_CROSS_EXAM"
   | "CROSS_EXAM_1"
   | "CROSS_EXAM_2"
+  | "DEFENSE_CLOSING"
+  | "PROSECUTION_CLOSING"
   | "VERDICT"
   | "COMPLETE";
 
