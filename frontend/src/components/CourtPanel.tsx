@@ -65,6 +65,7 @@ const ROLE_CONFIG = {
 interface ParsedArgument {
   number: number;
   title: string;
+  summary: string;
   body: string;
 }
 
@@ -126,8 +127,8 @@ function parseArguments(text: string): ParsedOpening {
         ? sequential[i + 1].index
         : body.length;
     const raw = body.slice(cur.start, end).trim();
-    const { title, body: argBody } = splitTitleBody(raw);
-    args.push({ number: cur.num, title, body: argBody });
+    const { title, summary, body: argBody } = splitTitleBody(raw);
+    args.push({ number: cur.num, title, summary, body: argBody });
   }
 
   return { confidence, arguments: args, conclusion };
@@ -135,31 +136,46 @@ function parseArguments(text: string): ParsedOpening {
 
 function splitTitleBody(content: string): {
   title: string;
+  summary: string;
   body: string;
 } {
-  // If there's a colon within the first ~80 chars, use it
+  // New format: Title\nSUMMARY: ...\nDETAIL: ...
+  const summaryIdx = content.indexOf("SUMMARY:");
+  const detailIdx = content.indexOf("DETAIL:");
+
+  if (summaryIdx !== -1 && detailIdx !== -1) {
+    const title = content.slice(0, summaryIdx).trim();
+    const summary = content
+      .slice(summaryIdx + "SUMMARY:".length, detailIdx)
+      .trim();
+    const body = content.slice(detailIdx + "DETAIL:".length).trim();
+    return { title, summary, body };
+  }
+
+  // Fallback: legacy "Title: body" format (no separate summary)
   const colonIdx = content.indexOf(":");
   if (colonIdx > 0 && colonIdx < 80) {
     return {
       title: content.slice(0, colonIdx).trim(),
+      summary: "",
       body: content.slice(colonIdx + 1).trim(),
     };
   }
 
-  // Otherwise take the first sentence (up to first period followed by space)
   const sentenceEnd = content.search(/\.\s/);
   if (sentenceEnd > 0 && sentenceEnd < 120) {
     return {
       title: content.slice(0, sentenceEnd).trim(),
+      summary: "",
       body: content.slice(sentenceEnd + 1).trim(),
     };
   }
 
-  // Fallback: first 8 words
   const words = content.split(/\s+/);
   const cut = Math.min(8, words.length);
   return {
     title: words.slice(0, cut).join(" "),
+    summary: "",
     body: words.slice(cut).join(" "),
   };
 }
@@ -322,6 +338,27 @@ export function CourtPanel({
 
 export type SourceEntry = { index: number; evidenceId: string };
 
+/** Extract unique citation IDs from text (both [TOOL:id] and bare tool_xxx). */
+function extractCitationIds(
+  text: string,
+  sourceMap: Map<string, SourceEntry>,
+): SourceEntry[] {
+  const seen = new Set<string>();
+  const results: SourceEntry[] = [];
+
+  const toolPattern = /\[TOOL:([^\]]+)\]|(?:\[?)(tool_[a-f0-9]{4,8})(?:\]?)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = toolPattern.exec(text)) !== null) {
+    const id = m[1] ?? m[2];
+    const entry = sourceMap.get(id);
+    if (entry && !seen.has(entry.evidenceId)) {
+      seen.add(entry.evidenceId);
+      results.push(entry);
+    }
+  }
+  return results;
+}
+
 function StructuredView({
   parsed,
   config,
@@ -335,32 +372,97 @@ function StructuredView({
   sourceMap: Map<string, SourceEntry>;
   onCitationClick: (evidenceId: string) => void;
 }) {
+  const [expandedArg, setExpandedArg] = useState<number | null>(null);
+
+  const toggle = (num: number) =>
+    setExpandedArg((prev) => (prev === num ? null : num));
+
   return (
-    <div className="space-y-4">
-      {/* Argument Cards */}
+    <div className="space-y-3">
+      {/* Argument Cards (accordion) */}
       {parsed.arguments.map((arg, i) => {
         const isLast = i === parsed.arguments.length - 1;
         const showCursor =
-          isActive && isLast && !parsed.conclusion;
+          isActive && isLast && !parsed.conclusion && !arg.summary;
+        const citations = extractCitationIds(arg.body, sourceMap);
+        const isOpen = expandedArg === arg.number;
 
         return (
           <div
             key={i}
-            className={`rounded-md border ${config.cardBorder} ${config.cardBg} p-3`}
+            className={`rounded-md border ${config.cardBorder} ${config.cardBg} transition-colors`}
           >
-            <div className="mb-2 flex items-center gap-2">
+            {/* Clickable header */}
+            <button
+              type="button"
+              onClick={() => toggle(arg.number)}
+              className="flex w-full items-start gap-2 p-3 text-left"
+            >
               <span
-                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${config.numberBg} text-xs font-bold ${config.numberText}`}
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${config.numberBg} text-xs font-bold ${config.numberText}`}
               >
                 {arg.number}
               </span>
-              <h4 className={`text-sm font-semibold uppercase tracking-wide ${config.chipText}`}>
-                {arg.title}
-              </h4>
-            </div>
-            <div className="text-sm leading-relaxed text-court-text-dim">
-              <InlineText text={arg.body} sourceMap={sourceMap} onCitationClick={onCitationClick} />
-              {showCursor && <Cursor color={config.color} />}
+              <div className="min-w-0 flex-1">
+                <h4 className={`text-sm font-semibold uppercase tracking-wide ${config.chipText}`}>
+                  {arg.title}
+                </h4>
+                {arg.summary && (
+                  <p className="mt-1 text-sm leading-snug text-court-text">
+                    {arg.summary}
+                  </p>
+                )}
+                {/* Citation badges — always visible */}
+                {citations.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {citations.map((entry) => (
+                      <span
+                        key={entry.evidenceId}
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onCitationClick(entry.evidenceId);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.stopPropagation();
+                            onCitationClick(entry.evidenceId);
+                          }
+                        }}
+                        className="inline-flex items-center rounded bg-evidence/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-evidence hover:bg-evidence/20 transition-colors"
+                      >
+                        [{entry.index}]
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {showCursor && <Cursor color={config.color} />}
+              </div>
+              <ChevronRight
+                className={`mt-1 h-3.5 w-3.5 shrink-0 text-court-text-muted transition-transform duration-200 ${
+                  isOpen ? "rotate-90" : ""
+                }`}
+              />
+            </button>
+
+            {/* Expandable detail */}
+            <div
+              className={`grid transition-[grid-template-rows] duration-200 ${
+                isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              }`}
+            >
+              <div className="overflow-hidden">
+                <div className="border-t border-court-border/50 px-3 pb-3 pt-2">
+                  <div className="text-sm leading-relaxed text-court-text-dim">
+                    <InlineText
+                      text={arg.body}
+                      sourceMap={sourceMap}
+                      onCitationClick={onCitationClick}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );

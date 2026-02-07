@@ -90,7 +90,7 @@ export function EvidenceTrail({
     prevCountRef.current = evidence.length;
   }, [evidence.length]);
 return (
-    <div className="flex h-full flex-col rounded-xl border border-court-border bg-court-surface">
+    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-court-border bg-court-surface">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-court-border px-4 py-3">
         <div className="flex items-center gap-2">
