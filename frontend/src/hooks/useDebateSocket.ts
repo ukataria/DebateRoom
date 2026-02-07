@@ -33,9 +33,17 @@ export function useDebateSocket(url: string) {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const toolCallCounter = useRef(0);
   const crossExamCounter = useRef(0);
+  const mountedRef = useRef(true);
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (!mountedRef.current) return;
+    const readyState = wsRef.current?.readyState;
+    if (
+      readyState === WebSocket.OPEN ||
+      readyState === WebSocket.CONNECTING
+    ) {
+      return;
+    }
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -45,8 +53,18 @@ export function useDebateSocket(url: string) {
     };
 
     ws.onclose = () => {
-      setState((prev) => ({ ...prev, connected: false }));
-      reconnectTimer.current = setTimeout(connect, 3000);
+      setState((prev) => {
+        // Don't auto-reconnect if debate finished or component unmounted
+        const terminal =
+          prev.phase === "COMPLETE" ||
+          prev.phase === "EPISTEMIC_MAP" ||
+          prev.verdict !== null;
+        if (!mountedRef.current || terminal) {
+          return { ...prev, connected: false };
+        }
+        reconnectTimer.current = setTimeout(connect, 3000);
+        return { ...prev, connected: false };
+      });
     };
 
     ws.onerror = () => {
@@ -277,8 +295,10 @@ export function useDebateSocket(url: string) {
   }, [send]);
 
   useEffect(() => {
+    mountedRef.current = true;
     connect();
     return () => {
+      mountedRef.current = false;
       clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
     };

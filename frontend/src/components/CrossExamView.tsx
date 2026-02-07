@@ -11,15 +11,23 @@ export function CrossExamView({
   messages,
   activeAgent,
 }: CrossExamViewProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Scroll the section into view when it first mounts
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
+    sectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
+
+  // Scroll to bottom as new messages stream in
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
   }, [messages]);
 
   const doneCount = messages.filter((m) => m.done).length;
@@ -27,11 +35,12 @@ export function CrossExamView({
 
   return (
     <div
-      className="flex flex-1 flex-col overflow-hidden"
+      ref={sectionRef}
+      className="shrink-0 border-t border-gold/20 px-6 py-4"
       style={{ animation: "fade-in 0.4s ease-out" }}
     >
       {/* Header */}
-      <div className="flex items-center justify-center gap-2 border-b border-gold/20 bg-court-surface px-6 py-3">
+      <div className="mb-4 flex items-center justify-center gap-2">
         <Swords className="h-5 w-5 text-gold" />
         <h2 className="text-lg font-bold text-gold">
           Cross-Examination
@@ -41,24 +50,21 @@ export function CrossExamView({
         </span>
       </div>
 
-      {/* Chat Area */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-6 py-4"
-      >
-        <div className="mx-auto max-w-2xl space-y-4">
-          {messages.map((msg) => (
-            <ChatBubble key={msg.id} message={msg} />
-          ))}
+      {/* Messages */}
+      <div className="mx-auto max-w-2xl space-y-4">
+        {messages.map((msg) => (
+          <ChatBubble key={msg.id} message={msg} />
+        ))}
 
-          {activeAgent &&
-            (activeAgent === "defense" ||
-              activeAgent === "prosecution") &&
-            (messages.length === 0 ||
-              messages[messages.length - 1].done) && (
-              <TypingIndicator agent={activeAgent} />
-            )}
-        </div>
+        {activeAgent &&
+          (activeAgent === "defense" ||
+            activeAgent === "prosecution") &&
+          (messages.length === 0 ||
+            messages[messages.length - 1].done) && (
+            <TypingIndicator agent={activeAgent} />
+          )}
+
+        <div ref={bottomRef} />
       </div>
     </div>
   );

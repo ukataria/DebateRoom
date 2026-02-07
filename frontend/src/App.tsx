@@ -8,7 +8,6 @@ import { CourtPanel } from "./components/CourtPanel";
 import { EvidenceTrail } from "./components/EvidenceTrail";
 import { InterventionBar } from "./components/InterventionBar";
 import { CourtDirective } from "./components/CourtDirective";
-import { ConfidenceMeter } from "./components/ConfidenceMeter";
 import { VerdictDisplay } from "./components/VerdictDisplay";
 import { EpistemicMap } from "./components/EpistemicMap";
 import { PhaseIndicator } from "./components/PhaseIndicator";
@@ -35,9 +34,7 @@ function App() {
 
   const isIntake = state.phase === "INTAKE";
   const showCourtroom = !isIntake;
-  const showCrossExam =
-    state.phase === "CROSS_EXAM_1" ||
-    state.phase === "CROSS_EXAM_2";
+  const showCrossExam = state.crossExamMessages.length > 0;
 
   const [highlightedEvidenceId, setHighlightedEvidenceId] =
     useState<string | null>(null);
@@ -113,23 +110,16 @@ function App() {
             />
           )}
 
-          {/* Confidence Meter */}
-          <ConfidenceMeter
-            defense={state.confidence.defense}
-            prosecution={state.confidence.prosecution}
-          />
-
-          {/* Cross-Examination View */}
-          {showCrossExam && (
-            <CrossExamView
-              messages={state.crossExamMessages}
-              activeAgent={state.activeAgent}
-            />
-          )}
-
-          {/* Three-Panel Layout */}
-          {!showCrossExam && (
-            <main className="flex flex-1 gap-4 overflow-hidden p-4">
+          {/* Scrollable Content Area */}
+          <div className="flex flex-1 flex-col overflow-y-auto">
+            {/* Three-Panel Layout — always visible */}
+            <main
+              className={`flex gap-4 overflow-hidden p-4 ${
+                showCrossExam
+                  ? "h-[70vh] shrink-0"
+                  : "flex-1"
+              }`}
+            >
               {/* Defense Panel */}
               <div className="flex-1">
                 <CourtPanel
@@ -137,7 +127,6 @@ function App() {
                   text={state.defenseText}
                   isActive={state.activeAgent === "defense"}
                   interrupted={state.defenseInterrupted}
-                  confidence={state.confidence.defense}
                   validationFlags={state.validationFlags}
                   evidence={state.evidence}
                   toolCalls={state.toolCalls}
@@ -181,7 +170,6 @@ function App() {
                     state.activeAgent === "prosecution"
                   }
                   interrupted={state.prosecutionInterrupted}
-                  confidence={state.confidence.prosecution}
                   validationFlags={state.validationFlags}
                   evidence={state.evidence}
                   toolCalls={state.toolCalls}
@@ -189,35 +177,43 @@ function App() {
                 />
               </div>
             </main>
-          )}
+
+            {/* Cross-Examination — appears below panels */}
+            {showCrossExam && (
+              <CrossExamView
+                messages={state.crossExamMessages}
+                activeAgent={state.activeAgent}
+              />
+            )}
+
+            {/* Verdict */}
+            {state.verdict && (
+              <VerdictDisplay
+                ruling={state.verdict.ruling}
+                confidence={state.verdict.confidence}
+                decisiveEvidence={
+                  state.verdict.decisive_evidence
+                }
+                unresolved={state.verdict.unresolved}
+                flipConditions={state.verdict.flip_conditions}
+              />
+            )}
+
+            {/* Epistemic Map */}
+            {state.epistemicMap && (
+              <EpistemicMap
+                confirmed={state.epistemicMap.confirmed}
+                contested={state.epistemicMap.contested}
+                unknown={state.epistemicMap.unknown}
+              />
+            )}
+          </div>
 
           {/* Intervention Bar */}
           <InterventionBar
             phase={state.phase}
             onIntervene={sendIntervention}
           />
-
-          {/* Verdict */}
-          {state.verdict && (
-            <VerdictDisplay
-              ruling={state.verdict.ruling}
-              confidence={state.verdict.confidence}
-              decisiveEvidence={
-                state.verdict.decisive_evidence
-              }
-              unresolved={state.verdict.unresolved}
-              flipConditions={state.verdict.flip_conditions}
-            />
-          )}
-
-          {/* Epistemic Map */}
-          {state.epistemicMap && (
-            <EpistemicMap
-              confirmed={state.epistemicMap.confirmed}
-              contested={state.epistemicMap.contested}
-              unknown={state.epistemicMap.unknown}
-            />
-          )}
         </>
       )}
     </div>

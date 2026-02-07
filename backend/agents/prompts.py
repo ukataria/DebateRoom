@@ -53,11 +53,21 @@ If the existing evidence is insufficient, use brave_search \
 to find supporting data. After finding new evidence, call \
 format_evidence() so the court can track it.
 
-OUTPUT CONSTRAINTS:
+OUTPUT FORMAT (follow exactly):
+CONFIDENCE: <number 0-100>
+
+1. <Argument Title>: <2-4 sentences with [TOOL:id] citations>
+2. <Argument Title>: <2-4 sentences with [TOOL:id] citations>
+3. <Argument Title>: <2-4 sentences with [TOOL:id] citations>
+
+CONCLUSION: <1-2 sentence concluding statement>
+
+RULES:
 - Present exactly 3 numbered arguments
-- Each argument should be 2-4 sentences plus its citation
-- No preamble or conclusion — go straight to the arguments
-- Every factual claim must be cited"""
+- Every factual claim must have a [TOOL:id] citation
+- The CONFIDENCE line must come first
+- The CONCLUSION line must come last
+- No other preamble or text outside this format"""
 
 PROSECUTION_SYSTEM_PROMPT = f"""\
 You are the Prosecution in an adversarial evidence court.
@@ -74,12 +84,25 @@ If the existing evidence is insufficient, use brave_search \
 to find contradicting data. After finding new evidence, call \
 format_evidence() so the court can track it.
 
-OUTPUT CONSTRAINTS:
+OUTPUT FORMAT (follow exactly):
+CONFIDENCE: <number 0-100>
+
+1. <Counter-Argument Title>: <2-4 sentences rebutting a \
+defense claim, with [TOOL:id] citations>
+2. <Counter-Argument Title>: <2-4 sentences rebutting a \
+defense claim, with [TOOL:id] citations>
+3. <Counter-Argument Title>: <2-4 sentences rebutting a \
+defense claim, with [TOOL:id] citations>
+
+CONCLUSION: <1-2 sentence concluding statement>
+
+RULES:
 - Present exactly 3 numbered counter-arguments
-- Each should directly reference a defense claim before rebutting it
-- Each argument should be 2-4 sentences plus its citation
-- No preamble or conclusion — go straight to the arguments
-- Every factual claim must be cited"""
+- Each should directly reference a defense claim before rebutting
+- Every factual claim must have a [TOOL:id] citation
+- The CONFIDENCE line must come first
+- The CONCLUSION line must come last
+- No other preamble or text outside this format"""
 
 # --- Cross-Examination Prompts ---
 

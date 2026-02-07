@@ -13,7 +13,6 @@ interface CourtPanelProps {
   text: string;
   isActive: boolean;
   interrupted: boolean;
-  confidence: number;
   validationFlags: ValidationFlag[];
   evidence: EvidenceItem[];
   toolCalls: ToolCallEvent[];
@@ -57,29 +56,46 @@ interface ParsedArgument {
   body: string;
 }
 
-function parseArguments(text: string): {
-  preamble: string;
+interface ParsedOpening {
+  confidence: number | null;
   arguments: ParsedArgument[];
   conclusion: string;
-} {
-  // Find all numbered points: "1." preceded by any boundary
-  // (start, newline, period, colon, bracket, whitespace)
-  // Must be sequential numbers to avoid false positives
-  const allMatches: { index: number; num: number; contentStart: number }[] = [];
-  const pattern = /(?:^|[.\]:\n]\s*)(\d+)\.\s+/g;
+}
+
+function parseArguments(text: string): ParsedOpening {
+  // Extract CONFIDENCE: N from the start
+  let confidence: number | null = null;
+  let body = text;
+  const confMatch = body.match(/^CONFIDENCE:\s*(\d+)/);
+  if (confMatch) {
+    confidence = parseInt(confMatch[1], 10);
+    body = body.slice(confMatch[0].length).trim();
+  }
+
+  // Extract CONCLUSION: ... from the end
+  let conclusion = "";
+  const concIdx = body.indexOf("CONCLUSION:");
+  if (concIdx !== -1) {
+    conclusion = body.slice(concIdx + "CONCLUSION:".length).trim();
+    body = body.slice(0, concIdx).trim();
+  }
+
+  // Parse numbered arguments: "N. Title: Body"
+  const argPattern = /(?:^|\n)\s*(\d+)\.\s+/g;
+  const matches: { index: number; num: number; start: number }[] = [];
   let m: RegExpExecArray | null;
-  while ((m = pattern.exec(text)) !== null) {
-    allMatches.push({
+  while ((m = argPattern.exec(body)) !== null) {
+    matches.push({
       index: m.index,
       num: parseInt(m[1], 10),
-      contentStart: m.index + m[0].length,
+      start: m.index + m[0].length,
     });
   }
 
-  // Filter to only sequential numbers (1, 2, 3... or starting from where we find 1)
-  const sequential: typeof allMatches = [];
+  // Keep only sequential (1, 2, 3...)
+  const sequential: typeof matches = [];
   let expected = 1;
-  for (const match of allMatches) {
+  for (const match of matches) {
     if (match.num === expected) {
       sequential.push(match);
       expected++;
@@ -87,61 +103,22 @@ function parseArguments(text: string): {
   }
 
   if (sequential.length === 0) {
-    return { preamble: text, arguments: [], conclusion: "" };
+    return { confidence, arguments: [], conclusion };
   }
 
-  const preamble = text.slice(0, sequential[0].index).trim();
   const args: ParsedArgument[] = [];
-
   for (let i = 0; i < sequential.length; i++) {
     const cur = sequential[i];
-    const contentEnd =
+    const end =
       i + 1 < sequential.length
         ? sequential[i + 1].index
-        : text.length;
-    const rawContent = text
-      .slice(cur.contentStart, contentEnd)
-      .trim();
-
-    // Split title from body: use colon if present near the start,
-    // otherwise take the first sentence
-    const { title, body } = splitTitleBody(rawContent);
-    args.push({ number: cur.num, title, body });
+        : body.length;
+    const raw = body.slice(cur.start, end).trim();
+    const { title, body: argBody } = splitTitleBody(raw);
+    args.push({ number: cur.num, title, body: argBody });
   }
 
-  // Extract conclusion from last argument
-  let conclusion = "";
-  if (args.length > 0) {
-    const lastArg = args[args.length - 1];
-    const markers = [
-      "in conclusion",
-      "in sum,",
-      "to summarize",
-      "in summary",
-      "to conclude",
-      "thus,",
-      "therefore,",
-      "overall,",
-    ];
-    for (const marker of markers) {
-      const idx = lastArg.body
-        .toLowerCase()
-        .lastIndexOf(marker);
-      if (idx !== -1) {
-        const before = lastArg.body.slice(0, idx);
-        const lastPeriod = before.lastIndexOf(".");
-        const splitIdx =
-          lastPeriod !== -1 ? lastPeriod + 1 : idx;
-        conclusion = lastArg.body.slice(splitIdx).trim();
-        lastArg.body = lastArg.body
-          .slice(0, splitIdx)
-          .trim();
-        break;
-      }
-    }
-  }
-
-  return { preamble, arguments: args, conclusion };
+  return { confidence, arguments: args, conclusion };
 }
 
 function splitTitleBody(content: string): {
@@ -180,7 +157,6 @@ export function CourtPanel({
   text,
   isActive,
   interrupted,
-  confidence,
   validationFlags,
   evidence,
   toolCalls,
@@ -232,36 +208,52 @@ export function CourtPanel({
       } transition-colors duration-300`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-court-border px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Icon className={`h-5 w-5 ${config.color}`} />
-          <span
-            className={`text-base font-semibold ${config.color}`}
-          >
-            {config.label}
-          </span>
-          {isActive && (
-            <span className="flex items-center gap-1 text-xs text-court-text-muted">
-              <span
-                className={`inline-block h-1.5 w-1.5 rounded-full ${config.barColor}`}
-                style={{
-                  animation: "typing-dot 1.4s infinite",
-                }}
-              />
-              Speaking...
+      <div className="border-b border-court-border px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Icon className={`h-5 w-5 ${config.color}`} />
+            <span
+              className={`text-base font-semibold ${config.color}`}
+            >
+              {config.label}
             </span>
-          )}
-          {interrupted && (
-            <span className="flex items-center gap-1 rounded-md bg-gold/10 px-2 py-0.5 text-xs text-gold">
-              <Gavel className="h-3 w-3" />
-              Interrupted
+            {isActive && (
+              <span className="flex items-center gap-1 text-xs text-court-text-muted">
+                <span
+                  className={`inline-block h-1.5 w-1.5 rounded-full ${config.barColor}`}
+                  style={{
+                    animation: "typing-dot 1.4s infinite",
+                  }}
+                />
+                Speaking...
+              </span>
+            )}
+            {interrupted && (
+              <span className="flex items-center gap-1 rounded-md bg-gold/10 px-2 py-0.5 text-xs text-gold">
+                <Gavel className="h-3 w-3" />
+                Interrupted
+              </span>
+            )}
+          </div>
+          {hasStructure && !isActive && (
+            <span className="text-sm text-court-text-muted">
+              {parsed.arguments.length} arguments
             </span>
           )}
         </div>
-        {hasStructure && !isActive && (
-          <span className="text-sm text-court-text-muted">
-            {parsed.arguments.length} arguments
-          </span>
+        {/* Confidence bar */}
+        {parsed.confidence !== null && (
+          <div className="mt-2 flex items-center gap-2">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-court-panel">
+              <div
+                className={`h-full rounded-full ${config.barColor} transition-all duration-700 ease-out`}
+                style={{ width: `${parsed.confidence}%` }}
+              />
+            </div>
+            <span className={`text-xs font-semibold ${config.color}`}>
+              {parsed.confidence}%
+            </span>
+          </div>
         )}
       </div>
 
@@ -340,13 +332,6 @@ function StructuredView({
 }) {
   return (
     <div className="space-y-2.5">
-      {/* Preamble - shown as a subtle intro */}
-      {parsed.preamble && (
-        <p className="px-1 text-sm leading-relaxed text-court-text-muted">
-          <InlineText text={parsed.preamble} sourceMap={sourceMap} onCitationClick={onCitationClick} />
-        </p>
-      )}
-
       {/* Argument Cards */}
       {parsed.arguments.map((arg, i) => (
         <div
