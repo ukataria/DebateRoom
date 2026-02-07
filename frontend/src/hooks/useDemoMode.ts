@@ -16,8 +16,6 @@ const INITIAL_STATE: DebateState = {
   validationFlags: [],
   confidence: { defense: 50, prosecution: 50 },
   courtDirectives: [],
-  verdict: null,
-  epistemicMap: null,
   crossExamMessages: [],
   activeAgent: null,
 };
@@ -108,62 +106,6 @@ const MOCK_PROSECUTION =
 3. Weak Market Signal: The hiring survey [TOOL:tool_004] reveals that while 68% value ethics awareness, only 12% formally test for it. Ethics awareness can be developed through integrated modules, capstone projects, and professional development — without adding credit requirements.
 
 CONCLUSION: A mandate is premature and counterproductive — the defense's own evidence shows voluntary adoption works, making forced requirements unnecessary.`;
-
-const MOCK_VERDICT = {
-  ruling:
-    "The Defense presents a stronger evidence-based case. The trend toward AI ethics education is clear and accelerating, and the measured impact on engineering practice is significant. However, the Prosecution raises valid concerns about the specific mechanism of a hard mandate versus strong integration.",
-  confidence: 68,
-  decisive_evidence: [
-    {
-      id: "tool_003",
-      title: "MIT Ethics Training Impact Study",
-      impact:
-        "The 2.3x improvement in harm identification directly addresses the practical value question.",
-    },
-    {
-      id: "tool_001",
-      title: "Top-50 CS Program Survey (Zhang et al.)",
-      impact:
-        "Establishes the broader trend, though the defense conflates offering with requiring.",
-    },
-    {
-      id: "tool_004",
-      title: "IEEE Hiring Manager Survey",
-      impact:
-        "Shows market demand exists but hasn't crystallized into formal requirements.",
-    },
-  ],
-  unresolved: [
-    "What is the optimal delivery mechanism — standalone course vs. integrated modules?",
-    "Who is qualified to teach AI ethics effectively in a CS department?",
-    "Does mandatory ethics education actually change engineering behavior, or only voluntary engagement?",
-  ],
-  flip_conditions: [
-    "Evidence that mandatory ethics courses produce comparable outcomes to voluntary enrollment",
-    "Data showing CMU graduates have caused specific harms attributable to lack of ethics training",
-    "A viable staffing plan for quality ethics instruction at scale",
-  ],
-};
-
-const MOCK_EPISTEMIC_MAP = {
-  confirmed: [
-    "AI ethics coursework is expanding across top CS programs",
-    "Students at CMU show strong voluntary interest in AI ethics",
-    "Ethics training correlates with better harm identification in practice",
-    "Tech employers increasingly value ethics awareness",
-  ],
-  contested: [
-    "Whether mandatory requirements produce the same outcomes as voluntary enrollment",
-    "Whether the 2.3x improvement is causal or reflects selection bias",
-    "Whether market demand for ethics skills is strong enough to justify a mandate",
-  ],
-  unknown: [
-    "Long-term career outcomes of ethics-trained vs. non-trained CS graduates",
-    "Optimal faculty qualifications for teaching AI ethics in CS contexts",
-    "Whether integrated ethics modules are as effective as standalone courses",
-    "Student sentiment toward mandatory vs. elective ethics coursework at CMU",
-  ],
-};
 
 const MOCK_CROSS_EXAM_EXCHANGES: {
   agent: "prosecution" | "defense";
@@ -430,30 +372,13 @@ export function useDemoMode() {
       }, t);
     }
 
-    // After cross-exam, show verdict
+    // After cross-exam, complete
     t += PHASE_DELAY * 2;
     schedule(() => {
       setState((prev) => ({
         ...prev,
-        phase: "VERDICT",
-        confidence: { defense: 62, prosecution: 55 },
-      }));
-    }, t);
-
-    t += 2000;
-    schedule(() => {
-      setState((prev) => ({
-        ...prev,
-        verdict: MOCK_VERDICT,
-      }));
-    }, t);
-
-    t += 2500;
-    schedule(() => {
-      setState((prev) => ({
-        ...prev,
-        phase: "EPISTEMIC_MAP",
-        epistemicMap: MOCK_EPISTEMIC_MAP,
+        phase: "COMPLETE",
+        activeAgent: null,
       }));
     }, t);
   }, [schedule]);

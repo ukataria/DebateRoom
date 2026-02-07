@@ -10,10 +10,7 @@ const PHASES: { key: DebatePhase; label: string }[] = [
   { key: "DEFENSE_OPENING", label: "Defense" },
   { key: "PROSECUTION_OPENING", label: "Prosecution" },
   { key: "AWAITING_CROSS_EXAM", label: "Cross-Exam" },
-  { key: "DEFENSE_CLOSING", label: "Closing" },
-  { key: "PROSECUTION_CLOSING", label: "Closing" },
-  { key: "VERDICT", label: "Verdict" },
-  { key: "EPISTEMIC_MAP", label: "Map" },
+  { key: "VERDICT", label: "Judge" },
 ];
 
 export function PhaseIndicator({

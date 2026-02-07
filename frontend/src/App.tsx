@@ -8,8 +8,7 @@ import { CourtPanel } from "./components/CourtPanel";
 import { EvidenceTrail } from "./components/EvidenceTrail";
 import { InterventionBar } from "./components/InterventionBar";
 import { CourtDirective } from "./components/CourtDirective";
-import { VerdictDisplay } from "./components/VerdictDisplay";
-import { EpistemicMap } from "./components/EpistemicMap";
+import { JudgeSummary } from "./components/JudgeSummary";
 import { PhaseIndicator } from "./components/PhaseIndicator";
 import { CrossExamView } from "./components/CrossExamView";
 import "./index.css";
@@ -186,25 +185,14 @@ function App() {
               />
             )}
 
-            {/* Verdict */}
-            {state.verdict && (
-              <VerdictDisplay
-                ruling={state.verdict.ruling}
-                confidence={state.verdict.confidence}
-                decisiveEvidence={
-                  state.verdict.decisive_evidence
-                }
-                unresolved={state.verdict.unresolved}
-                flipConditions={state.verdict.flip_conditions}
-              />
-            )}
-
-            {/* Epistemic Map */}
-            {state.epistemicMap && (
-              <EpistemicMap
-                confirmed={state.epistemicMap.confirmed}
-                contested={state.epistemicMap.contested}
-                unknown={state.epistemicMap.unknown}
+            {/* Judge Summary */}
+            {state.judgeText && (
+              <JudgeSummary
+                text={state.judgeText}
+                isActive={state.activeAgent === "judge"}
+                evidence={state.evidence}
+                toolCalls={state.toolCalls}
+                onCitationClick={handleCitationClick}
               />
             )}
           </div>

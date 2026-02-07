@@ -12,6 +12,7 @@ from fastapi import WebSocket
 
 from backend.agents.base import AgentConfig, Message, start_agent_stream
 from backend.agents.defense import create_defense_config, create_defense_cross_config
+from backend.agents.judge import create_judge_config
 from backend.agents.prosecutor import (
     create_prosecution_config,
     create_prosecution_cross_config,
@@ -51,10 +52,7 @@ class DebatePhase(str, Enum):
     # Cross-examination: alternates CROSS_EXAM_1 (prosecution) / CROSS_EXAM_2 (defense)
     CROSS_EXAM_1 = "CROSS_EXAM_1"  # Prosecution challenges
     CROSS_EXAM_2 = "CROSS_EXAM_2"  # Defense responds
-    DEFENSE_CLOSING = "DEFENSE_CLOSING"
-    PROSECUTION_CLOSING = "PROSECUTION_CLOSING"
-    VERDICT = "VERDICT"
-    EPISTEMIC_MAP = "EPISTEMIC_MAP"
+    VERDICT = "VERDICT"  # Judge delivers neutral summary
     COMPLETE = "COMPLETE"
 
 
@@ -459,6 +457,13 @@ async def run_debate(
 
     # --- Cross-Examination: Rapid back-and-forth (5 exchanges each) ---
     await _run_cross_examination(session, citations, runner, ws)
+
+    # --- Judge Summary ---
+    await _transition(session, DebatePhase.VERDICT, ws)
+    judge_config = create_judge_config()
+    await run_agent_turn(
+        session, judge_config, citations, runner, ws
+    )
 
     # --- Done ---
     await _transition(session, DebatePhase.COMPLETE, ws)

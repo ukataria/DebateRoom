@@ -7,10 +7,7 @@ export type DebatePhase =
   | "AWAITING_CROSS_EXAM"
   | "CROSS_EXAM_1"
   | "CROSS_EXAM_2"
-  | "DEFENSE_CLOSING"
-  | "PROSECUTION_CLOSING"
   | "VERDICT"
-  | "EPISTEMIC_MAP"
   | "COMPLETE";
 
 export type AgentRole =
@@ -56,20 +53,6 @@ export type ServerMessage =
     }
   | { type: "court_directive"; content: string }
   | {
-      type: "verdict";
-      ruling: string;
-      confidence: number;
-      decisive_evidence: DecisiveEvidence[];
-      unresolved: string[];
-      flip_conditions: string[];
-    }
-  | {
-      type: "epistemic_map";
-      confirmed: string[];
-      contested: string[];
-      unknown: string[];
-    }
-  | {
       type: "evidence";
       id: string;
       source: string;
@@ -84,12 +67,6 @@ export type ClientMessage =
   | { type: "start"; dilemma: string; image_data: string | null }
   | { type: "intervention"; content: string }
   | { type: "start_cross_exam" };
-
-export interface DecisiveEvidence {
-  id: string;
-  title: string;
-  impact: string;
-}
 
 export interface ToolCallEvent {
   id: string;
@@ -139,18 +116,6 @@ export interface DebateState {
   validationFlags: ValidationFlag[];
   confidence: { defense: number; prosecution: number };
   courtDirectives: string[];
-  verdict: {
-    ruling: string;
-    confidence: number;
-    decisive_evidence: DecisiveEvidence[];
-    unresolved: string[];
-    flip_conditions: string[];
-  } | null;
-  epistemicMap: {
-    confirmed: string[];
-    contested: string[];
-    unknown: string[];
-  } | null;
   crossExamMessages: CrossExamMessage[];
   activeAgent: AgentRole | null;
 }

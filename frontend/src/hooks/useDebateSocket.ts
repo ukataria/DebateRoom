@@ -21,8 +21,6 @@ const INITIAL_STATE: DebateState = {
   validationFlags: [],
   confidence: { defense: 50, prosecution: 50 },
   courtDirectives: [],
-  verdict: null,
-  epistemicMap: null,
   crossExamMessages: [],
   activeAgent: null,
 };
@@ -55,10 +53,7 @@ export function useDebateSocket(url: string) {
     ws.onclose = () => {
       setState((prev) => {
         // Don't auto-reconnect if debate finished or component unmounted
-        const terminal =
-          prev.phase === "COMPLETE" ||
-          prev.phase === "EPISTEMIC_MAP" ||
-          prev.verdict !== null;
+        const terminal = prev.phase === "COMPLETE";
         if (!mountedRef.current || terminal) {
           return { ...prev, connected: false };
         }
@@ -222,30 +217,6 @@ export function useDebateSocket(url: string) {
         }));
         break;
 
-      case "verdict":
-        setState((prev) => ({
-          ...prev,
-          verdict: {
-            ruling: msg.ruling,
-            confidence: msg.confidence,
-            decisive_evidence: msg.decisive_evidence,
-            unresolved: msg.unresolved,
-            flip_conditions: msg.flip_conditions,
-          },
-        }));
-        break;
-
-      case "epistemic_map":
-        setState((prev) => ({
-          ...prev,
-          epistemicMap: {
-            confirmed: msg.confirmed,
-            contested: msg.contested,
-            unknown: msg.unknown,
-          },
-        }));
-        break;
-
       case "evidence":
         setState((prev) => ({
           ...prev,
@@ -320,10 +291,8 @@ function getActiveAgent(
     case "DISCOVERY":
       return "researcher";
     case "DEFENSE_OPENING":
-    case "DEFENSE_CLOSING":
       return "defense";
     case "PROSECUTION_OPENING":
-    case "PROSECUTION_CLOSING":
       return "prosecution";
     case "CROSS_EXAM_1":
       return "prosecution";
