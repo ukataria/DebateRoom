@@ -102,8 +102,8 @@ export function DilemmaInput({
             </h1>
           </div>
           <p className="text-lg text-court-text-dim">
-            Adversarial epistemology — AI agents competing on
-            evidence quality, not rhetoric.
+            Adversarial problem solving — AI agents competing on
+            evidence, not rhetoric to answer your questions.
           </p>
           {isDemo && (
             <p className="mt-3 text-sm text-evidence">
