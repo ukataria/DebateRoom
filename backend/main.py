@@ -155,6 +155,7 @@ async def handle_ws(
                 slog.info("cross_exam_start_received")
 
     listener = asyncio.create_task(listen_for_client())
+    debate_complete = False
 
     try:
         # Wait for the client to send a start message
@@ -169,6 +170,19 @@ async def handle_ws(
         slog.info("debate_started", dilemma=start_data["dilemma"])
 
         await run_debate(session, runner, websocket)
+        debate_complete = True
+        
+        # After debate completes, keep connection open to allow frontend 
+        # to receive final state. Wait for client to disconnect naturally.
+        slog.info("debate_complete_keeping_connection_open")
+        # The listener task will continue running and handle disconnects
+        # We'll wait for it to complete (which happens on client disconnect)
+        try:
+            await listener
+        except WebSocketDisconnect:
+            slog.info("client_disconnected_after_complete")
+        except Exception as e:
+            slog.warning("listener_error_after_complete", error=str(e))
 
     except WebSocketDisconnect:
         slog.info("client_disconnected")
@@ -180,7 +194,21 @@ async def handle_ws(
         except Exception:
             pass
     finally:
-        listener.cancel()
+        # Only cancel listener if debate didn't complete normally
+        # (if it completed, we already awaited it above)
+        if not debate_complete:
+            listener.cancel()
+            try:
+                await listener
+            except (asyncio.CancelledError, Exception):
+                pass
+        elif not listener.done():
+            # If debate completed but listener is still running, cancel it
+            listener.cancel()
+            try:
+                await listener
+            except (asyncio.CancelledError, Exception):
+                pass
         cleanup_session_logger(session_id)
         slog.info("ws_cleanup_complete")
 

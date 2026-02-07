@@ -460,10 +460,53 @@ async def run_debate(
 
     # --- Judge Summary ---
     await _transition(session, DebatePhase.VERDICT, ws)
-    judge_config = create_judge_config()
-    await run_agent_turn(
-        session, judge_config, citations, runner, ws
-    )
+    done = False
+    judge_attempts = 0
+    max_judge_attempts = 3
+    
+    while not done and judge_attempts < max_judge_attempts:
+        judge_config = create_judge_config()
+        done = await run_agent_turn(
+            session, judge_config, citations, runner, ws
+        )
+        judge_attempts += 1
+        
+        # Check if judge actually produced content
+        if done:
+            # Find the last judge entry in transcript
+            judge_entries = [
+                e for e in session.transcript 
+                if e.agent == "judge" and e.phase == DebatePhase.VERDICT.value
+            ]
+            if judge_entries:
+                last_judge_entry = judge_entries[-1]
+                if len(last_judge_entry.content.strip()) == 0:
+                    session.log.warning(
+                        "judge_empty_response",
+                        attempt=judge_attempts,
+                        retrying=True,
+                    )
+                    done = False  # Retry if empty response
+                else:
+                    session.log.info(
+                        "judge_summary_complete",
+                        response_length=len(last_judge_entry.content),
+                    )
+            else:
+                session.log.warning(
+                    "judge_no_transcript_entry",
+                    attempt=judge_attempts,
+                    retrying=True,
+                )
+                done = False  # Retry if no entry created
+    
+    if not done and judge_attempts >= max_judge_attempts:
+        session.log.error(
+            "judge_failed_after_retries",
+            attempts=max_judge_attempts,
+        )
+        # Still transition to COMPLETE even if judge failed
+        # The frontend can handle missing judge text
 
     # --- Done ---
     await _transition(session, DebatePhase.COMPLETE, ws)
