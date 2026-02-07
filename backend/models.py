@@ -98,6 +98,19 @@ class ErrorMessage(BaseModel):
     message: str
 
 
+class EvidenceMessage(BaseModel):
+    """A single piece of evidence from a tool call."""
+
+    type: Literal["evidence"] = "evidence"
+    id: str
+    source: str
+    title: str
+    snippet: str
+    source_type: str = "web"
+    date: str = ""
+    url: str = ""
+
+
 # --- Client → Server Messages ---
 
 

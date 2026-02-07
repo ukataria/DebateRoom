@@ -9,61 +9,94 @@ searching; these tools handle evidence formatting.
 from __future__ import annotations
 
 import uuid
+from collections import deque
 
 
-def format_evidence(
-    title: str,
-    snippet: str,
-    source: str,
-    source_type: str = "web",
-    date: str = "",
-    url: str = "",
-) -> dict[str, str]:
-    """Format a piece of evidence into the standard court format.
-
-    Call this after finding relevant information from a search.
-    Returns a structured evidence object with a unique ID that
-    agents can cite using [TOOL:<id>] notation.
-
-    Args:
-        title: Title of the source (article, paper, page).
-        snippet: Key excerpt or finding (1-3 sentences).
-        source: Name of the source (e.g. "BBC News", "Nature").
-        source_type: One of "web", "academic", "news", "data".
-        date: Publication date if available (e.g. "2025-03").
-        url: URL of the source if available.
+class Citation:
     """
-    evidence_id = f"tool_{uuid.uuid4().hex[:6]}"
-    return {
-        "id": evidence_id,
-        "title": title,
-        "snippet": snippet,
-        "source": source,
-        "source_type": source_type,
-        "date": date,
-        "url": url,
-    }
-
-
-def deduplicate_sources(
-    sources: list[dict[str, str]],
-) -> list[dict[str, str]]:
-    """Remove duplicate evidence sources based on title similarity.
-
-    Call this after gathering evidence from multiple search tools
-    to eliminate redundant results before presenting to the court.
-
-    Args:
-        sources: List of evidence objects from format_evidence.
-
-    Returns:
-        Deduplicated list of evidence objects.
+    Keeps track of citation information
     """
-    seen_titles: set[str] = set()
-    unique: list[dict[str, str]] = []
-    for src in sources:
-        normalized = src.get("title", "").strip().lower()
-        if normalized and normalized not in seen_titles:
-            seen_titles.add(normalized)
-            unique.append(src)
-    return unique
+
+    def __init__(self):
+        self.evidences = deque([])
+
+    def add_evidence(self, evidence_dict: dict[str, str]) -> None:
+        """
+        Adds evidence to be processed for a citation.
+        """
+        self.evidences.append(evidence_dict)
+
+    def remove_evidence(self) -> dict[str, str]:
+        """
+        Removes citation from evidence tract
+        """
+
+        return self.evidences.popleft()
+
+    def make_format_evidence_tool(self):
+        """Creates the make format evidence tool for the MCP"""
+
+        def make_format_evidence(
+            title: str,
+            snippet: str,
+            source: str,
+            source_type: str = "web",
+            date: str = "",
+            url: str = "",
+        ) -> dict[str, str]:
+            """Format a piece of evidence into the standard court format.
+
+            Call this after finding relevant information from a search.
+            Returns a structured evidence object with a unique ID that
+            agents can cite using [TOOL:<id>] notation.
+
+            Args:
+                title: Title of the source (article, paper, page).
+                snippet: Key excerpt or finding (1-3 sentences).
+                source: Name of the source (e.g. "BBC News", "Nature").
+                source_type: One of "web", "academic", "news", "data".
+                date: Publication date if available (e.g. "2025-03").
+                url: URL of the source if available.
+            """
+            evidence_id = f"tool_{uuid.uuid4().hex[:6]}"
+
+            evidence = {
+                "id": evidence_id,
+                "title": title,
+                "snippet": snippet,
+                "source": source,
+                "source_type": source_type,
+                "date": date,
+                "url": url,
+            }
+            self.add_evidence(evidence)
+
+            return evidence
+
+        return make_format_evidence
+
+    def make_deduplicate_sources_tool(self):
+        def make_duplicate_sources(
+            sources: list[dict[str, str]],
+        ) -> list[dict[str, str]]:
+            """Remove duplicate evidence sources based on title similarity.
+
+            Call this after gathering evidence from multiple search tools
+            to eliminate redundant results before presenting to the court.
+
+            Args:
+                sources: List of evidence objects from format_evidence.
+
+            Returns:
+                Deduplicated list of evidence objects.
+            """
+            seen_titles: set[str] = set()
+            unique: list[dict[str, str]] = []
+            for src in sources:
+                normalized = src.get("title", "").strip().lower()
+                if normalized and normalized not in seen_titles:
+                    seen_titles.add(normalized)
+                    unique.append(src)
+            return unique
+
+        return make_duplicate_sources

@@ -13,6 +13,7 @@ from backend.agents.base import AgentConfig, Message, start_agent_stream
 from backend.agents.defense import create_defense_config
 from backend.agents.researcher import create_researcher_config
 from backend.logging_config import get_session_logger
+from backend.agents.tools import Citation
 from backend.models import (
     AgentStreamMessage,
     CourtDirective,
@@ -21,6 +22,7 @@ from backend.models import (
     Intervention,
     PhaseChangeMessage,
     TranscriptEntry,
+    EvidenceMessage,
 )
 
 logger = structlog.get_logger()
@@ -142,6 +144,7 @@ def _build_history(session: DebateSession) -> list[Message]:
 async def run_agent_turn(
     session: DebateSession,
     config: AgentConfig,
+    citations: Citation,
     runner: DedalusRunner,
     ws: WebSocket,
 ) -> bool:
@@ -168,6 +171,13 @@ async def run_agent_turn(
 
     async for chunk in stream:
         chunk_count += 1
+
+        if config.role == "researcher":
+            if len(citations.evidences) > 0:
+                await _send(
+                    ws, EvidenceMessage(type="evidence", **citations.remove_evidence())
+                )
+                slog.info("sent_evidence", citation_length=len(citations.evidences))
 
         # Check for intervention between chunks
         try:
@@ -210,6 +220,7 @@ async def run_agent_turn(
             and hasattr(chunk.choices[0].delta, "content")
             and chunk.choices[0].delta.content
         ):
+            # print(config)
             token = chunk.choices[0].delta.content
             partial_response += token
             await _send(
@@ -286,15 +297,17 @@ async def run_debate(
     """
     session.log.info("debate_flow_start", dilemma=session.dilemma)
 
+    citations = Citation()
+
     # --- Research Information ---
     await _transition(session, DebatePhase.DISCOVERY, ws)
-    research_config = create_researcher_config()
-    await run_agent_turn(session, research_config, runner, ws)
+    research_config = create_researcher_config(citations)
+    await run_agent_turn(session, research_config, citations, runner, ws)
 
     # --- Defense Opening ---
     await _transition(session, DebatePhase.DEFENSE_OPENING, ws)
     defense_config = create_defense_config()
-    await run_agent_turn(session, defense_config, runner, ws)
+    await run_agent_turn(session, defense_config, citations, runner, ws)
 
     # --- Done (MVP) ---
     await _transition(session, DebatePhase.COMPLETE, ws)
