@@ -27,18 +27,14 @@ def create_prosecution_config(citations: Citation) -> AgentConfig:
     )
 
 
-def create_prosecution_cross_config(
-    citations: Citation,
-) -> AgentConfig:
+def create_prosecution_cross_config() -> AgentConfig:
     """Create the prosecution cross-examination configuration.
 
-    Same MCP and tools as the opening, but the prompt
-    shifts to directly challenging the Defense's arguments.
+    No MCP servers or tools — cross-exam uses only
+    existing evidence from the discovery phase.
     """
     return AgentConfig(
         role="prosecution",
         models=PROSECUTION_MODELS,
         system_prompt=PROSECUTION_CROSS_PROMPT,
-        mcp_servers=[MCP_BRAVE_SEARCH],
-        tools=[citations.make_format_evidence_tool()],
     )
