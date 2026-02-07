@@ -16,17 +16,17 @@ from backend.agents.prosecutor import (
     create_prosecution_cross_config,
 )
 from backend.agents.researcher import create_researcher_config
-from backend.logging_config import get_session_logger
 from backend.agents.tools import Citation
+from backend.logging_config import get_session_logger
 from backend.models import (
     AgentStreamMessage,
     CourtDirective,
     CourtDirectiveMessage,
     Evidence,
+    EvidenceMessage,
     Intervention,
     PhaseChangeMessage,
     TranscriptEntry,
-    EvidenceMessage,
 )
 
 logger = structlog.get_logger()
@@ -43,8 +43,9 @@ class DebatePhase(str, Enum):
     DISCOVERY = "DISCOVERY"
     DEFENSE_OPENING = "DEFENSE_OPENING"
     PROSECUTION_OPENING = "PROSECUTION_OPENING"
-    CROSS_EXAM_1 = "CROSS_EXAM_1"
-    CROSS_EXAM_2 = "CROSS_EXAM_2"
+    # Cross-examination: alternates CROSS_EXAM_1 (prosecution) / CROSS_EXAM_2 (defense)
+    CROSS_EXAM_1 = "CROSS_EXAM_1"  # Prosecution challenges
+    CROSS_EXAM_2 = "CROSS_EXAM_2"  # Defense responds
     DEFENSE_CLOSING = "DEFENSE_CLOSING"
     PROSECUTION_CLOSING = "PROSECUTION_CLOSING"
     VERDICT = "VERDICT"
@@ -52,6 +53,8 @@ class DebatePhase(str, Enum):
     COMPLETE = "COMPLETE"
 
 
+# Cross-examination configuration
+MAX_CROSS_EXCHANGES = 5  # Each side gets 5 turns (10 total)
 # --- Session State ---
 
 
@@ -133,7 +136,8 @@ def _build_history(session: DebateSession) -> list[Message]:
             {
                 "role": "user",
                 "content": (
-                    f"COURT DIRECTIVE (from the decision-maker) that interrupted the prrevoius message: "
+                    "COURT DIRECTIVE (from the decision-maker) "
+                    f"that interrupted the previous message: "
                     f'"{directive.content}"{evidence_text}'
                 ),
             }
@@ -309,6 +313,67 @@ async def _handle_intervention(
     )
 
 
+# --- Cross-Examination Runner ---
+async def _run_cross_examination(
+    session: DebateSession,
+    citations: Citation,
+    runner: DedalusRunner,
+    ws: WebSocket,
+) -> None:
+    """Run rapid-fire cross-examination.
+
+    Alternates between prosecution challenges and defense responses.
+    Each side gets MAX_CROSS_EXCHANGES turns (10 total exchanges).
+    Handles interventions gracefully — the interrupted agent's turn
+    counts, and we continue from the next speaker.
+    """
+    session.log.info(
+        "cross_examination_start",
+        max_exchanges=MAX_CROSS_EXCHANGES,
+    )
+
+    exchange_count = 0
+
+    for exchange_num in range(MAX_CROSS_EXCHANGES):
+        # --- Prosecution challenges ---
+        await _transition(session, DebatePhase.CROSS_EXAM_1, ws)
+        pros_config = create_prosecution_cross_config()
+        pros_done = await run_agent_turn(
+            session, pros_config, citations, runner, ws
+        )
+        exchange_count += 1
+
+        # If interrupted, the turn still counts — continue to defense
+        if not pros_done:
+            session.log.info(
+                "cross_exam_prosecution_interrupted",
+                exchange=exchange_num + 1,
+            )
+
+        # --- Defense responds ---
+        await _transition(session, DebatePhase.CROSS_EXAM_2, ws)
+        def_config = create_defense_cross_config()
+        def_done = await run_agent_turn(
+            session, def_config, citations, runner, ws
+        )
+        exchange_count += 1
+
+        if not def_done:
+            session.log.info(
+                "cross_exam_defense_interrupted",
+                exchange=exchange_num + 1,
+            )
+
+        session.log.debug(
+            "cross_exam_exchange_complete",
+            exchange=exchange_num + 1,
+            total_exchanges=MAX_CROSS_EXCHANGES,
+        )
+
+    session.log.info(
+        "cross_examination_complete",
+        total_turns=exchange_count,
+    )
 # --- Main Debate Flow ---
 
 
@@ -349,19 +414,8 @@ async def run_debate(
         prosecution_config = create_prosecution_config(citations)
         done = await run_agent_turn(session, prosecution_config, citations, runner, ws)
 
-    # --- Cross-Examination 1: Prosecution challenges Defense ---
-    await _transition(session, DebatePhase.CROSS_EXAM_1, ws)
-    done = False
-    while not done:
-        pros_cross = create_prosecution_cross_config(citations)
-        done = await run_agent_turn(session, pros_cross, citations, runner, ws)
-
-    # --- Cross-Examination 2: Defense responds ---
-    await _transition(session, DebatePhase.CROSS_EXAM_2, ws)
-    done = False
-    while not done:
-        def_cross = create_defense_cross_config(citations)
-        done = await run_agent_turn(session, def_cross, citations, runner, ws)
+    # --- Cross-Examination: Rapid back-and-forth (5 exchanges each) ---
+    await _run_cross_examination(session, citations, runner, ws)
 
     # --- Done ---
     await _transition(session, DebatePhase.COMPLETE, ws)

@@ -24,17 +24,14 @@ def create_defense_config(citations: Citation) -> AgentConfig:
     )
 
 
-def create_defense_cross_config(citations: Citation) -> AgentConfig:
+def create_defense_cross_config() -> AgentConfig:
     """Create the defense cross-examination configuration.
 
-    Same MCP and tools as the opening, but the prompt
-    shifts to a conversational rebuttal of the
-    Prosecution's challenges.
+    No MCP servers or tools - cross-exam uses only 
+    existing evidence from the discovery phase.
     """
     return AgentConfig(
         role="defense",
         models=DEFENSE_MODELS,
         system_prompt=DEFENSE_CROSS_PROMPT,
-        mcp_servers=[MCP_BRAVE_SEARCH],
-        tools=[citations.make_format_evidence_tool()],
     )
