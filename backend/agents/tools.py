@@ -8,8 +8,8 @@ searching; these tools handle evidence formatting.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
-from collections import deque
 
 
 class Citation:
@@ -17,21 +17,14 @@ class Citation:
     Keeps track of citation information
     """
 
-    def __init__(self):
-        self.evidences = deque([])
+    def __init__(self) -> None:
+        self.evidence_queue: asyncio.Queue[dict[str, str]] = (
+            asyncio.Queue()
+        )
 
     def add_evidence(self, evidence_dict: dict[str, str]) -> None:
-        """
-        Adds evidence to be processed for a citation.
-        """
-        self.evidences.append(evidence_dict)
-
-    def remove_evidence(self) -> dict[str, str]:
-        """
-        Removes citation from evidence tract
-        """
-
-        return self.evidences.popleft()
+        """Adds evidence to the queue for immediate forwarding."""
+        self.evidence_queue.put_nowait(evidence_dict)
 
     def make_format_evidence_tool(self):
         """Creates the make format evidence tool for the MCP"""
