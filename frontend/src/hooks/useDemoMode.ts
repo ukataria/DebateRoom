@@ -12,6 +12,7 @@ const INITIAL_STATE: DebateState = {
   defenseInterrupted: false,
   prosecutionInterrupted: false,
   toolCalls: [],
+  evidence: [],
   validationFlags: [],
   confidence: { defense: 50, prosecution: 50 },
   courtDirectives: [],
@@ -90,28 +91,20 @@ const MOCK_TOOL_RESULTS: {
 ];
 
 const MOCK_DEFENSE =
-  `The evidence overwhelmingly supports requiring AI ethics courses at CMU. A comprehensive survey of top-50 CS programs shows that 72% now offer AI ethics coursework [TOOL:tool_001], indicating this is rapidly becoming an industry standard rather than an outlier position.
-
-CMU has already demonstrated organic demand — 340 students voluntarily enrolled in the AI Ethics minor in its first semester [TOOL:tool_002]. This suggests student appetite exists; a requirement simply ensures equitable access rather than leaving ethical training to self-selection bias.
-
-The practical impact is measurable. MIT research demonstrates that engineers with ethics training are 2.3 times more likely to identify potential harms during design reviews [TOOL:tool_003]. In an era where AI systems affect hiring decisions, criminal sentencing, and healthcare allocation, this isn't abstract philosophy — it's a core engineering competency.
-
-From an employability standpoint, 68% of tech hiring managers now consider ethics awareness valuable or essential [TOOL:tool_004]. CMU graduates who lack this training risk being less competitive in a market that increasingly values responsible AI development.
-
-The cost of inaction is clear: CMU risks producing technically brilliant engineers who build systems that cause measurable harm — and the reputational damage flows back to the institution.`;
+  `I will now present a well-organized argument IN FAVOR of requiring AI ethics courses at CMU.
+1. Industry Standard Adoption: A comprehensive survey of top-50 CS programs shows that 72% now offer AI ethics coursework [TOOL:tool_001], indicating this is rapidly becoming an industry standard rather than an outlier position. CMU risks falling behind peer institutions by not requiring it.
+2. Proven Student Demand: CMU has already demonstrated organic demand — 340 students voluntarily enrolled in the AI Ethics minor in its first semester [TOOL:tool_002]. A requirement ensures equitable access rather than leaving ethical training to self-selection bias.
+3. Measurable Engineering Impact: MIT research demonstrates that engineers with ethics training are 2.3 times more likely to identify potential harms during design reviews [TOOL:tool_003]. In an era where AI systems affect hiring decisions, criminal sentencing, and healthcare allocation, this is a core engineering competency.
+4. Employability Advantage: 68% of tech hiring managers now consider ethics awareness valuable or essential [TOOL:tool_004]. CMU graduates who lack this training risk being less competitive in a market that increasingly values responsible AI development.
+5. Institutional Responsibility: The cost of inaction is clear — CMU risks producing technically brilliant engineers who build systems that cause measurable harm, and the reputational damage flows back to the institution. In conclusion, the evidence strongly supports requiring AI ethics courses as both an academic and moral imperative.`;
 
 const MOCK_PROSECUTION =
   `While the defense presents compelling data, a mandatory requirement is the wrong mechanism. Let me address why.
-
-The 72% figure [TOOL:tool_001] is misleading — "offering" a course is fundamentally different from "requiring" it. Most top programs offer ethics as an elective, recognizing that curriculum mandates reduce flexibility. Stanford, MIT, and Berkeley all offer robust ethics coursework without making it mandatory.
-
-The 340-student enrollment at CMU [TOOL:tool_002] actually undermines the case for a requirement. Strong voluntary enrollment proves students already seek this education when it's available. A mandate would replace intrinsic motivation with compliance, potentially breeding resentment and superficial engagement.
-
-Regarding the MIT study on design reviews [TOOL:tool_003], correlation is not causation. Engineers who voluntarily take ethics courses may already be predisposed to ethical thinking. Forcing the same coursework on uninterested students is unlikely to replicate this effect.
-
-The hiring manager survey [TOOL:tool_004] reveals a critical gap: while 68% value ethics awareness, only 12% formally test for it. This suggests the market hasn't yet created strong enough incentives to justify a curricular mandate. Ethics awareness can be developed through integrated modules in existing courses, capstone projects, and professional development — without adding credit requirements to an already demanding program.
-
-A mandatory course also raises a resource question: who teaches it? CS faculty lack formal ethics training, and philosophy departments lack AI expertise. Forced cross-departmental teaching often produces mediocre courses that satisfy no one.`;
+1. Misleading Adoption Statistics: The 72% figure [TOOL:tool_001] conflates "offering" with "requiring." Most top programs offer ethics as an elective, recognizing that curriculum mandates reduce flexibility. Stanford, MIT, and Berkeley all offer robust ethics coursework without making it mandatory.
+2. Voluntary Demand Undermines the Mandate: The 340-student enrollment at CMU [TOOL:tool_002] actually undermines the case for a requirement. Strong voluntary enrollment proves students already seek this education when available. A mandate replaces intrinsic motivation with compliance, risking resentment and superficial engagement.
+3. Correlation vs Causation: Regarding the MIT study [TOOL:tool_003], engineers who voluntarily take ethics courses may already be predisposed to ethical thinking. Forcing the same coursework on uninterested students is unlikely to replicate the 2.3x improvement.
+4. Weak Market Signal: The hiring survey [TOOL:tool_004] reveals that while 68% value ethics awareness, only 12% formally test for it. Ethics awareness can be developed through integrated modules, capstone projects, and professional development — without adding credit requirements.
+5. Resource and Quality Concerns: Who teaches these courses? CS faculty lack formal ethics training, and philosophy departments lack AI expertise. Forced cross-departmental teaching often produces mediocre courses that satisfy no one. Therefore, a mandate is premature and counterproductive.`;
 
 const MOCK_VERDICT = {
   ruling:

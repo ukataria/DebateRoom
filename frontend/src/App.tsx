@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Scale, Wifi, WifiOff, Play } from "lucide-react";
 import { useDebateSocket } from "./hooks/useDebateSocket";
 import { useDemoMode } from "./hooks/useDemoMode";
@@ -19,9 +20,13 @@ const WS_URL =
 function App() {
   const ws = useDebateSocket(WS_URL);
   const demo = useDemoMode();
+  const startedLive = useRef(false);
 
-  // Use live WebSocket when connected, fall back to demo
-  const useDemo = !ws.connected;
+  // Once a live debate starts, never fall back to demo mid-session
+  if (ws.connected && ws.state.phase !== "INTAKE") {
+    startedLive.current = true;
+  }
+  const useDemo = !ws.connected && !startedLive.current;
   const { state, startDebate, sendIntervention } = useDemo
     ? demo
     : ws;
@@ -109,6 +114,7 @@ function App() {
             <div className="w-80 shrink-0">
               <EvidenceTrail
                 toolCalls={state.toolCalls}
+                evidence={state.evidence}
                 researcherText={state.researcherText}
                 isResearchActive={
                   state.activeAgent === "researcher"
