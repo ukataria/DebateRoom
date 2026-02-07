@@ -114,6 +114,7 @@ function App() {
             <div className="w-80 shrink-0">
               <EvidenceTrail
                 toolCalls={state.toolCalls}
+                evidence={state.evidence}
                 researcherText={state.researcherText}
                 isResearchActive={
                   state.activeAgent === "researcher"

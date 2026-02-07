@@ -67,6 +67,16 @@ export type ServerMessage =
       confirmed: string[];
       contested: string[];
       unknown: string[];
+    }
+  | {
+      type: "evidence";
+      id: string;
+      source: string;
+      title: string;
+      snippet: string;
+      source_type: string;
+      date: string;
+      url: string;
     };
 
 export type ClientMessage =
@@ -89,6 +99,16 @@ export interface ToolCallEvent {
   result_id?: string;
 }
 
+export interface EvidenceItem {
+  id: string;
+  source: string;
+  title: string;
+  snippet: string;
+  source_type: string;
+  date: string;
+  url: string;
+}
+
 export interface ValidationFlag {
   agent: string;
   claim: string;
@@ -106,6 +126,7 @@ export interface DebateState {
   defenseInterrupted: boolean;
   prosecutionInterrupted: boolean;
   toolCalls: ToolCallEvent[];
+  evidence: EvidenceItem[];
   validationFlags: ValidationFlag[];
   confidence: { defense: number; prosecution: number };
   courtDirectives: string[];

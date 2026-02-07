@@ -12,6 +12,7 @@ const INITIAL_STATE: DebateState = {
   defenseInterrupted: false,
   prosecutionInterrupted: false,
   toolCalls: [],
+  evidence: [],
   validationFlags: [],
   confidence: { defense: 50, prosecution: 50 },
   courtDirectives: [],

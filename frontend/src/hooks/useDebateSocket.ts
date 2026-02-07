@@ -17,6 +17,7 @@ const INITIAL_STATE: DebateState = {
   defenseInterrupted: false,
   prosecutionInterrupted: false,
   toolCalls: [],
+  evidence: [],
   validationFlags: [],
   confidence: { defense: 50, prosecution: 50 },
   courtDirectives: [],
@@ -199,6 +200,24 @@ export function useDebateSocket(url: string) {
             contested: msg.contested,
             unknown: msg.unknown,
           },
+        }));
+        break;
+
+      case "evidence":
+        setState((prev) => ({
+          ...prev,
+          evidence: [
+            ...prev.evidence,
+            {
+              id: msg.id,
+              source: msg.source,
+              title: msg.title,
+              snippet: msg.snippet,
+              source_type: msg.source_type,
+              date: msg.date,
+              url: msg.url,
+            },
+          ],
         }));
         break;
     }
