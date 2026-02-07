@@ -82,7 +82,7 @@ export function CrossExamView({
       </div>
 
       {/* Messages */}
-      <div className="mx-auto max-w-2xl space-y-4">
+      <div className="mx-auto max-w-4xl space-y-4">
         {messages.map((msg) => (
           <ChatBubble
             key={msg.id}
@@ -125,7 +125,7 @@ function ChatBubble({
       style={{ animation: "bubble-in 0.3s ease-out" }}
     >
       <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+        className={`max-w-[70%] rounded-2xl px-4 py-3 ${
           isProsecution
             ? "rounded-tl-sm border border-prosecution/20 bg-prosecution/15"
             : "rounded-tr-sm border border-defense/20 bg-defense/15"
