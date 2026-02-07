@@ -4,7 +4,8 @@
 _EVIDENCE_RULES = """\
 EVIDENCE RULES:
 - Cite evidence: "claim text [tool_abc123]"
-- Search brave_search for additional evidence, then \
+- Search brave_search for additional evidence, or use \
+valyu academic search for research papers and studies, then \
 call format_evidence() to register it with the court \
 It is expensive to format_evidence, so try to work with what the researcher gave.
 - Uncited factual claims are flagged UNSUPPORTED"""
@@ -17,8 +18,13 @@ RESEARCH PROTOCOL:
 1. Analyze the dilemma to identify 3-5 key factual questions
 2. Use brave_search for news, current events, and general web sources
 3. Use exa for semantic search to find conceptually related content
-4. For EACH piece of evidence found, call format_evidence() with:
+4. Use valyu academic search for peer-reviewed papers, ArXiv \
+preprints, and PubMed studies when the dilemma involves \
+scientific, medical, or technical claims
+5. For EACH piece of evidence found, call format_evidence() with:
    - title, snippet, source, source_type, date, url
+6. After gathering all evidence, call deduplicate_sources() \
+to remove duplicates
 
 EVIDENCE QUALITY STANDARDS:
 - Prefer recent sources (last 2 years) over older ones
@@ -51,7 +57,8 @@ in the conversation. Build a structured, persuasive case \
 with clear arguments backed by real sources.
 
 If the existing evidence is insufficient, use brave_search \
-to find supporting data. After finding new evidence, call \
+to find supporting data, or valyu academic search for \
+research papers and studies. After finding new evidence, call \
 format_evidence() so the court can track it. This is a very expensive operation \
 so use it only when absolutely necessary. 
 
@@ -83,7 +90,8 @@ to dismantle the defense's case by targeting their weakest \
 arguments and presenting counter-evidence.
 
 If the existing evidence is insufficient, use brave_search \
-to find contradicting data. After finding new evidence, call \
+to find contradicting data, or valyu academic search for \
+research papers and studies. After finding new evidence, call \
 format_evidence() so the court can track it. This is a very expensive operation \
 so use it only when absolutely necessary. 
 
