@@ -16,11 +16,13 @@ interface UploadedFile {
 interface DilemmaInputProps {
   onSubmit: (dilemma: string, filePaths: string[]) => void;
   isDemo?: boolean;
+  apiBase: string;
 }
 
 export function DilemmaInput({
   onSubmit,
   isDemo,
+  apiBase,
 }: DilemmaInputProps) {
   const [input, setInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -63,7 +65,7 @@ export function DilemmaInput({
     formData.append("file", e.target.files[0]);
 
     try {
-      const response = await fetch("http://localhost:8000/upload", {
+      const response = await fetch(`${apiBase}/upload`, {
         method: "POST",
         body: formData,
       });

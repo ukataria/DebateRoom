@@ -13,6 +13,8 @@ import { PhaseIndicator } from "./components/PhaseIndicator";
 import { CrossExamView } from "./components/CrossExamView";
 import "./index.css";
 
+const API_BASE =
+  import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
 const WS_URL =
   import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws/session";
 
@@ -61,6 +63,7 @@ function App() {
         <DilemmaInput
           onSubmit={handleStart}
           isDemo={useDemo}
+          apiBase={API_BASE}
         />
       )}
 
