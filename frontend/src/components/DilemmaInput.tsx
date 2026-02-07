@@ -173,7 +173,7 @@ export function DilemmaInput({
             <button
               onClick={handleSubmit}
               disabled={!input.trim() || isUploading || isStarting}
-              className="flex items-center gap-2 rounded-lg bg-gold px-5 py-2.5 text-sm font-semibold text-court-bg transition-all hover:shadow-lg hover:shadow-gold/20 disabled:cursor-not-allowed disabled:opacity-40 min-w-[140px] justify-center"
+              className="flex items-center gap-2 rounded-lg bg-gold px-5 py-2.5 text-sm font-semibold text-court-bg transition-all hover:shadow-lg hover:shadow-gold/20 disabled:cursor-not-allowed disabled:opacity-80 min-w-[140px] justify-center"
             >
               {isStarting ? (
                 <>
@@ -201,7 +201,7 @@ export function DilemmaInput({
                 key={chip}
                 onClick={() => setInput(chip)}
                 disabled={isStarting}
-                className="rounded-full border border-court-border bg-court-panel px-4 py-2 text-sm text-court-text-dim transition-colors hover:border-gold/50 hover:text-court-text disabled:opacity-50"
+                className="rounded-full border border-court-border bg-court-surface px-4 py-2 text-sm text-court-text-dim transition-colors hover:border-gold/50 hover:text-court-text disabled:opacity-50"
               >
                 {chip}
               </button>

@@ -83,20 +83,20 @@ function ChatBubble({ message }: { message: CrossExamMessage }) {
       <div
         className={`max-w-[80%] rounded-2xl px-4 py-3 ${
           isProsecution
-            ? "rounded-tl-sm border border-prosecution/20 bg-prosecution/10"
-            : "rounded-tr-sm border border-defense/20 bg-defense/10"
+            ? "rounded-tl-sm border border-prosecution/20 bg-prosecution/15"
+            : "rounded-tr-sm border border-defense/20 bg-defense/15"
         }`}
       >
         {/* Agent label */}
         <div
-          className={`mb-1 flex items-center gap-1.5 text-xs font-semibold ${
+          className={`mb-1 flex items-center gap-1.5 text-m font-bold ${
             isProsecution ? "text-prosecution" : "text-defense"
           }`}
         >
           {isProsecution ? (
-            <Sword className="h-3 w-3" />
+            <Sword className="h-5 w-5" />
           ) : (
-            <Shield className="h-3 w-3" />
+            <Shield className="h-5 w-5" />
           )}
           {isProsecution ? "Prosecution" : "Defense"}
         </div>
