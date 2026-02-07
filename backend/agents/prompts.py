@@ -74,14 +74,16 @@ DETAIL: <2-4 sentences of supporting evidence with [TOOL:id] citations>
 SUMMARY: <1 concise sentence capturing the key takeaway>
 DETAIL: <2-4 sentences of supporting evidence with [TOOL:id] citations>
 
-3. <Argument Title>
+... 
+
+N. <Argument Title>
 SUMMARY: <1 concise sentence capturing the key takeaway>
 DETAIL: <2-4 sentences of supporting evidence with [TOOL:id] citations>
 
 CONCLUSION: <1 punchy sentence summarizing your strongest case>
 
 RULES:
-- Present exactly 3 numbered arguments
+- Present around 3 numbered arguments
 - Each argument must have a SUMMARY line (one sentence, no citations) \
 and a DETAIL line (evidence with [TOOL:id] citations)
 - Every factual claim in DETAIL must have a [TOOL:id] citation
@@ -142,10 +144,18 @@ PROSECUTION_CROSS_PROMPT = """\
 You are the Prosecution in rapid cross-examination.
 
 Challenge specific weaknesses in the Defense's argument. \
-Be direct and pointed — 2-3 sentences max. 
+Be direct and pointed, proving your point in 2-3 sentences max. 
 
 Reference evidence already presented in the debate. No new searches. Cite evidence with this format: \
 "claim text [tool_abc123]"
+
+The goal is to have a level headed, rationale conversation with the defense, understand the previous \
+point made by the Defense and talk about it. 
+
+A sample reasoning structure could be:
+1. Understand what the defense just responded
+2. Come up with counter points or new topics of discussion
+3. Formulate a concise response that explains this
 
 Speak TO the Defense: For example: "Your claim about X is flawed because..."
 Attack the evidence quality, not argument structure. It is important to be 
@@ -156,14 +166,21 @@ You are the Defense responding in rapid cross-examination.
 
 Address the Prosecution's points directly in. \
 2-3 sentences max. Either rebut with existing evidence or logical reasonaing claims.
-Additionally, feel free to attack the prosecutor's points, be assertive, and go on the offensive.
+Additionally, feel free to attack the prosecutor's independent points, be assertive, and go on the offensive.
 
 Reference evidence already presented in the debate. No new searches. Cite evidence with this format: \
 "claim text [tool_abc123]"
 
+The goal is to have a level headed, rationale conversation with the prosecutor, understand the previous \
+point made by the Prosecutor and talk about it if you feel there is something to discuss. 
+
+A sample reasoning structure could be:
+1. Understand what the defense just responded
+2. Come up with counter points or a new topic of discussion
+3. Formulate a concise response that explains this
+
 Speak TO the Prosecution: For example: "You raise X, but..." or "Fair point on X, however..."
-Conceding a weak point beats defending it poorly. It is important to be 
-conversationalist with the Prosecutor and human-like. """
+It is important to be conversationalist with the Prosecutor and human-like. """
 
 # --- Judge Prompt ---
 
@@ -178,7 +195,7 @@ opening, prosecution opening, and cross-examination exchanges.
 
 OUTPUT FORMAT (follow exactly):
 
-OVERVIEW: <2-3 sentence neutral summary of the dilemma and \
+OVERVIEW: <1-2 sentence neutral summary of the dilemma and \
 how both sides approached it>
 
 DEFENSE HIGHLIGHTS:
@@ -214,4 +231,5 @@ RULES:
 - Reference evidence IDs with [TOOL:id] when citing evidence, make sure to cite evidence!!
 - Keep each bullet point to 1-3 sentences
 - The OVERVIEW must come first, RECOMMENDATION must come last
-- No other preamble or text outside this format"""
+- No other preamble or text outside this format
+- Make sure to be concise in your ouptut, as a human should want to read your output."""

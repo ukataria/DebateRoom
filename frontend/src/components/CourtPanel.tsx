@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Shield,
   Sword,
   Gavel,
   AlertTriangle,
   ChevronRight,
-  X,
 } from "lucide-react";
 import type { EvidenceItem, ToolCallEvent, ValidationFlag } from "../types";
 
@@ -375,153 +374,111 @@ function StructuredView({
 }) {
   const [expandedArg, setExpandedArg] = useState<number | null>(null);
 
-  const handleClose = useCallback(() => setExpandedArg(null), []);
-
-  // Close modal on Escape
-  useEffect(() => {
-    if (expandedArg === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [expandedArg, handleClose]);
-
-  const modalArg =
-    expandedArg !== null
-      ? parsed.arguments.find((a) => a.number === expandedArg)
-      : null;
+  const toggle = (num: number) =>
+    setExpandedArg((prev) => (prev === num ? null : num));
 
   return (
-    <>
-      <div className="space-y-3">
-        {/* Collapsed Argument Cards */}
-        {parsed.arguments.map((arg, i) => {
-          const isLast = i === parsed.arguments.length - 1;
-          const showCursor =
-            isActive && isLast && !parsed.conclusion && !arg.summary;
-          const citations = extractCitationIds(arg.body, sourceMap);
+    <div className="space-y-3">
+      {/* Argument Cards (accordion) */}
+      {parsed.arguments.map((arg, i) => {
+        const isLast = i === parsed.arguments.length - 1;
+        const showCursor =
+          isActive && isLast && !parsed.conclusion && !arg.summary;
+        const citations = extractCitationIds(arg.body, sourceMap);
+        const isOpen = expandedArg === arg.number;
 
-          return (
+        return (
+          <div
+            key={i}
+            className={`rounded-md border ${config.cardBorder} ${config.cardBg} transition-colors`}
+          >
+            {/* Clickable header */}
             <button
-              key={i}
               type="button"
-              onClick={() => setExpandedArg(arg.number)}
-              className={`w-full rounded-md border ${config.cardBorder} ${config.cardBg} p-3 text-left transition-colors hover:brightness-110`}
+              onClick={() => toggle(arg.number)}
+              className="flex w-full items-start gap-2 p-3 text-left"
             >
-              {/* Title row */}
-              <div className="flex items-center gap-2">
-                <span
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${config.numberBg} text-xs font-bold ${config.numberText}`}
-                >
-                  {arg.number}
-                </span>
-                <h4 className={`flex-1 text-sm font-semibold uppercase tracking-wide ${config.chipText}`}>
+              <span
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded ${config.numberBg} text-xs font-bold ${config.numberText}`}
+              >
+                {arg.number}
+              </span>
+              <div className="min-w-0 flex-1">
+                <h4 className={`text-sm font-semibold uppercase tracking-wide ${config.chipText}`}>
                   {arg.title}
                 </h4>
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-court-text-muted" />
-              </div>
-
-              {/* Summary */}
-              {arg.summary && (
-                <p className="mt-1.5 text-sm leading-snug text-court-text">
-                  {arg.summary}
-                </p>
-              )}
-
-              {/* Citation badges */}
-              {citations.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {citations.map((entry) => (
-                    <span
-                      key={entry.evidenceId}
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCitationClick(entry.evidenceId);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                {arg.summary && (
+                  <p className="mt-1 text-sm leading-snug text-court-text">
+                    {arg.summary}
+                  </p>
+                )}
+                {/* Citation badges — always visible */}
+                {citations.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {citations.map((entry) => (
+                      <span
+                        key={entry.evidenceId}
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
                           e.stopPropagation();
                           onCitationClick(entry.evidenceId);
-                        }
-                      }}
-                      className="inline-flex items-center rounded bg-evidence/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-evidence hover:bg-evidence/20 transition-colors"
-                    >
-                      [{entry.index}]
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {showCursor && <Cursor color={config.color} />}
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.stopPropagation();
+                            onCitationClick(entry.evidenceId);
+                          }
+                        }}
+                        className="inline-flex items-center rounded bg-evidence/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-evidence hover:bg-evidence/20 transition-colors"
+                      >
+                        [{entry.index}]
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {showCursor && <Cursor color={config.color} />}
+              </div>
+              <ChevronRight
+                className={`mt-1 h-3.5 w-3.5 shrink-0 text-court-text-muted transition-transform duration-200 ${
+                  isOpen ? "rotate-90" : ""
+                }`}
+              />
             </button>
-          );
-        })}
 
-        {/* Conclusion */}
-        {parsed.conclusion && (
-          <div className="mt-2 flex items-start gap-2 rounded-md border border-gold/20 bg-gold/5 p-3">
-            <ChevronRight className="mt-1 h-3 w-3 shrink-0 text-gold" />
-            <div className="text-sm font-medium leading-relaxed text-court-text italic">
-              <InlineText text={parsed.conclusion} sourceMap={sourceMap} onCitationClick={onCitationClick} />
-              {isActive && <Cursor color={config.color} />}
+            {/* Expandable detail */}
+            <div
+              className={`grid transition-[grid-template-rows] duration-200 ${
+                isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              }`}
+            >
+              <div className="overflow-hidden">
+                <div className="border-t border-court-border/50 px-3 pb-3 pt-2">
+                  <div className="text-sm leading-relaxed text-court-text-dim">
+                    <InlineText
+                      text={arg.body}
+                      sourceMap={sourceMap}
+                      onCitationClick={onCitationClick}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+        );
+      })}
 
-      {/* Detail Modal */}
-      {modalArg && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={handleClose}
-        >
-          <div
-            className="relative mx-4 max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-xl border border-court-border bg-court-surface p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal header */}
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`flex h-6 w-6 shrink-0 items-center justify-center rounded ${config.numberBg} text-sm font-bold ${config.numberText}`}
-                >
-                  {modalArg.number}
-                </span>
-                <h3 className={`text-base font-semibold uppercase tracking-wide ${config.chipText}`}>
-                  {modalArg.title}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="shrink-0 rounded p-1 text-court-text-muted hover:bg-white/10 hover:text-court-text transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Summary */}
-            {modalArg.summary && (
-              <p className="mb-3 text-sm font-medium leading-snug text-court-text">
-                {modalArg.summary}
-              </p>
-            )}
-
-            {/* Full detail */}
-            <div className="text-sm leading-relaxed text-court-text-dim">
-              <InlineText
-                text={modalArg.body}
-                sourceMap={sourceMap}
-                onCitationClick={onCitationClick}
-              />
-            </div>
+      {/* Conclusion */}
+      {parsed.conclusion && (
+        <div className="mt-2 flex items-start gap-2 rounded-md border border-gold/20 bg-gold/5 p-3">
+          <ChevronRight className="mt-1 h-3 w-3 shrink-0 text-gold" />
+          <div className="text-sm font-medium leading-relaxed text-court-text italic">
+            <InlineText text={parsed.conclusion} sourceMap={sourceMap} onCitationClick={onCitationClick} />
+            {isActive && <Cursor color={config.color} />}
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
