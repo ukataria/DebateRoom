@@ -138,6 +138,17 @@ def _build_history(session: DebateSession) -> list[Message]:
     return messages
 
 
+async def _forward_evidence(
+    citations: Citation,
+    ws: WebSocket,
+) -> None:
+    """Watch the citation queue and send evidence immediately."""
+    while True:
+        evidence = await citations.evidence_queue.get()
+        await _send(ws, EvidenceMessage(type="evidence", **evidence))
+        logger.info("sent_evidence", evidence_id=evidence.get("id"))
+
+
 # --- Agent Turn Runner ---
 
 
@@ -169,68 +180,88 @@ async def run_agent_turn(
     partial_response = ""
     chunk_count = 0
 
-    async for chunk in stream:
-        chunk_count += 1
+    # Forward evidence to the frontend as soon as it's produced
+    forwarder = asyncio.create_task(
+        _forward_evidence(citations, ws)
+    )
 
-        if config.role == "researcher":
-            if len(citations.evidences) > 0:
+    try:
+        async for chunk in stream:
+            chunk_count += 1
+
+            # Check for intervention between chunks
+            try:
+                intervention = (
+                    session.intervention_queue.get_nowait()
+                )
+                # Save partial response
+                session.transcript.append(
+                    TranscriptEntry(
+                        agent=config.role,
+                        content=partial_response,
+                        phase=session.phase.value,
+                        interrupted=True,
+                    )
+                )
                 await _send(
-                    ws, EvidenceMessage(type="evidence", **citations.remove_evidence())
+                    ws,
+                    AgentStreamMessage(
+                        agent=config.role,
+                        content="",
+                        done=True,
+                        interrupted=True,
+                    ),
                 )
-                slog.info("sent_evidence", citation_length=len(citations.evidences))
+                await _handle_intervention(
+                    session, intervention, ws
+                )
+                slog.info(
+                    "agent_interrupted",
+                    chunks_before_interrupt=chunk_count,
+                    partial_length=len(partial_response),
+                    intervention=intervention.content,
+                )
+                return False
 
-        # Check for intervention between chunks
+            except asyncio.QueueEmpty:
+                pass
+
+            # Extract and forward content tokens
+            if (
+                hasattr(chunk, "choices")
+                and chunk.choices
+                and chunk.choices[0].delta
+                and hasattr(chunk.choices[0].delta, "content")
+                and chunk.choices[0].delta.content
+            ):
+                token = chunk.choices[0].delta.content
+                partial_response += token
+                await _send(
+                    ws,
+                    AgentStreamMessage(
+                        agent=config.role,
+                        content=token,
+                        done=False,
+                    ),
+                )
+    finally:
+        forwarder.cancel()
         try:
-            intervention = session.intervention_queue.get_nowait()
-            # Save partial response
-            session.transcript.append(
-                TranscriptEntry(
-                    agent=config.role,
-                    content=partial_response,
-                    phase=session.phase.value,
-                    interrupted=True,
-                )
-            )
-            await _send(
-                ws,
-                AgentStreamMessage(
-                    agent=config.role,
-                    content="",
-                    done=True,
-                    interrupted=True,
-                ),
-            )
-            await _handle_intervention(session, intervention, ws)
-            slog.info(
-                "agent_interrupted",
-                chunks_before_interrupt=chunk_count,
-                partial_length=len(partial_response),
-                intervention=intervention.content,
-            )
-            return False
-
-        except asyncio.QueueEmpty:
+            await forwarder
+        except (asyncio.CancelledError, Exception):
             pass
-
-        # Extract and forward content tokens
-        if (
-            hasattr(chunk, "choices")
-            and chunk.choices
-            and chunk.choices[0].delta
-            and hasattr(chunk.choices[0].delta, "content")
-            and chunk.choices[0].delta.content
-        ):
-            # print(config)
-            token = chunk.choices[0].delta.content
-            partial_response += token
-            await _send(
-                ws,
-                AgentStreamMessage(
-                    agent=config.role,
-                    content=token,
-                    done=False,
-                ),
-            )
+        # Drain any evidence still in the queue
+        while not citations.evidence_queue.empty():
+            try:
+                evidence = citations.evidence_queue.get_nowait()
+                await _send(
+                    ws,
+                    EvidenceMessage(
+                        type="evidence", **evidence
+                    ),
+                )
+            except asyncio.QueueEmpty:
+                break
 
     # Completed without interruption
     session.transcript.append(
