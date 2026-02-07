@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Shield,
   Sword,
   Gavel,
   AlertTriangle,
+  ChevronRight,
 } from "lucide-react";
 import type { ValidationFlag } from "../types";
 
@@ -24,7 +25,12 @@ const ROLE_CONFIG = {
     borderColor: "border-defense/30",
     bgActive: "bg-defense/5",
     barColor: "bg-defense",
-    accentDim: "text-defense-dim",
+    cardBorder: "border-defense/15",
+    cardBg: "bg-defense/5",
+    chipBg: "bg-defense/10",
+    chipText: "text-defense",
+    numberBg: "bg-defense/15",
+    numberText: "text-defense",
   },
   prosecution: {
     label: "Prosecution",
@@ -33,9 +39,138 @@ const ROLE_CONFIG = {
     borderColor: "border-prosecution/30",
     bgActive: "bg-prosecution/5",
     barColor: "bg-prosecution",
-    accentDim: "text-prosecution-dim",
+    cardBorder: "border-prosecution/15",
+    cardBg: "bg-prosecution/5",
+    chipBg: "bg-prosecution/10",
+    chipText: "text-prosecution",
+    numberBg: "bg-prosecution/15",
+    numberText: "text-prosecution",
   },
 } as const;
+
+interface ParsedArgument {
+  number: number;
+  title: string;
+  body: string;
+}
+
+function parseArguments(text: string): {
+  preamble: string;
+  arguments: ParsedArgument[];
+  conclusion: string;
+} {
+  // Find all numbered points: "1." preceded by any boundary
+  // (start, newline, period, colon, bracket, whitespace)
+  // Must be sequential numbers to avoid false positives
+  const allMatches: { index: number; num: number; contentStart: number }[] = [];
+  const pattern = /(?:^|[.\]:\n]\s*)(\d+)\.\s+/g;
+  let m: RegExpExecArray | null;
+  while ((m = pattern.exec(text)) !== null) {
+    allMatches.push({
+      index: m.index,
+      num: parseInt(m[1], 10),
+      contentStart: m.index + m[0].length,
+    });
+  }
+
+  // Filter to only sequential numbers (1, 2, 3... or starting from where we find 1)
+  const sequential: typeof allMatches = [];
+  let expected = 1;
+  for (const match of allMatches) {
+    if (match.num === expected) {
+      sequential.push(match);
+      expected++;
+    }
+  }
+
+  if (sequential.length < 2) {
+    return { preamble: text, arguments: [], conclusion: "" };
+  }
+
+  const preamble = text.slice(0, sequential[0].index).trim();
+  const args: ParsedArgument[] = [];
+
+  for (let i = 0; i < sequential.length; i++) {
+    const cur = sequential[i];
+    const contentEnd =
+      i + 1 < sequential.length
+        ? sequential[i + 1].index
+        : text.length;
+    const rawContent = text
+      .slice(cur.contentStart, contentEnd)
+      .trim();
+
+    // Split title from body: use colon if present near the start,
+    // otherwise take the first sentence
+    const { title, body } = splitTitleBody(rawContent);
+    args.push({ number: cur.num, title, body });
+  }
+
+  // Extract conclusion from last argument
+  let conclusion = "";
+  if (args.length > 0) {
+    const lastArg = args[args.length - 1];
+    const markers = [
+      "in conclusion",
+      "in sum,",
+      "to summarize",
+      "in summary",
+      "to conclude",
+      "thus,",
+      "therefore,",
+      "overall,",
+    ];
+    for (const marker of markers) {
+      const idx = lastArg.body
+        .toLowerCase()
+        .lastIndexOf(marker);
+      if (idx !== -1) {
+        const before = lastArg.body.slice(0, idx);
+        const lastPeriod = before.lastIndexOf(".");
+        const splitIdx =
+          lastPeriod !== -1 ? lastPeriod + 1 : idx;
+        conclusion = lastArg.body.slice(splitIdx).trim();
+        lastArg.body = lastArg.body
+          .slice(0, splitIdx)
+          .trim();
+        break;
+      }
+    }
+  }
+
+  return { preamble, arguments: args, conclusion };
+}
+
+function splitTitleBody(content: string): {
+  title: string;
+  body: string;
+} {
+  // If there's a colon within the first ~80 chars, use it
+  const colonIdx = content.indexOf(":");
+  if (colonIdx > 0 && colonIdx < 80) {
+    return {
+      title: content.slice(0, colonIdx).trim(),
+      body: content.slice(colonIdx + 1).trim(),
+    };
+  }
+
+  // Otherwise take the first sentence (up to first period followed by space)
+  const sentenceEnd = content.search(/\.\s/);
+  if (sentenceEnd > 0 && sentenceEnd < 120) {
+    return {
+      title: content.slice(0, sentenceEnd).trim(),
+      body: content.slice(sentenceEnd + 1).trim(),
+    };
+  }
+
+  // Fallback: first 8 words
+  const words = content.split(/\s+/);
+  const cut = Math.min(8, words.length);
+  return {
+    title: words.slice(0, cut).join(" "),
+    body: words.slice(cut).join(" "),
+  };
+}
 
 export function CourtPanel({
   role,
@@ -51,7 +186,8 @@ export function CourtPanel({
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop =
+        scrollRef.current.scrollHeight;
     }
   }, [text]);
 
@@ -59,9 +195,12 @@ export function CourtPanel({
     (f) => f.agent === role
   );
 
+  const parsed = useMemo(() => parseArguments(text), [text]);
+  const hasStructure = parsed.arguments.length > 0;
+
   return (
     <div
-      className={`flex flex-col rounded-xl border ${
+      className={`flex h-full flex-col rounded-xl border ${
         isActive
           ? `${config.borderColor} ${config.bgActive}`
           : "border-court-border bg-court-surface"
@@ -94,19 +233,34 @@ export function CourtPanel({
             </span>
           )}
         </div>
+        {hasStructure && !isActive && (
+          <span className="text-xs text-court-text-muted">
+            {parsed.arguments.length} arguments
+          </span>
+        )}
       </div>
 
       {/* Content */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-4"
+        className="flex-1 overflow-y-auto px-3 py-3"
         style={{ minHeight: "300px", maxHeight: "60vh" }}
       >
         {text ? (
-          <div className="text-sm leading-relaxed text-court-text">
-            <FormattedText text={text} />
-            {isActive && <BlinkingCursor color={config.color} />}
-          </div>
+          hasStructure ? (
+            <StructuredView
+              parsed={parsed}
+              config={config}
+              isActive={isActive}
+            />
+          ) : (
+            <div className="px-1 text-sm leading-relaxed text-court-text">
+              <InlineText text={text} />
+              {isActive && (
+                <BlinkingCursor color={config.color} />
+              )}
+            </div>
+          )
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-court-text-muted">
             {isActive
@@ -145,7 +299,9 @@ export function CourtPanel({
           <span className="text-court-text-muted">
             Confidence
           </span>
-          <span className={`font-mono font-semibold ${config.color}`}>
+          <span
+            className={`font-mono font-semibold ${config.color}`}
+          >
             {confidence}%
           </span>
         </div>
@@ -160,7 +316,69 @@ export function CourtPanel({
   );
 }
 
-function FormattedText({ text }: { text: string }) {
+function StructuredView({
+  parsed,
+  config,
+  isActive,
+}: {
+  parsed: ReturnType<typeof parseArguments>;
+  config: (typeof ROLE_CONFIG)[keyof typeof ROLE_CONFIG];
+  isActive: boolean;
+}) {
+  return (
+    <div className="space-y-2.5">
+      {/* Preamble - shown as a subtle intro */}
+      {parsed.preamble && (
+        <p className="px-1 text-xs leading-relaxed text-court-text-muted">
+          <InlineText text={parsed.preamble} />
+        </p>
+      )}
+
+      {/* Argument Cards */}
+      {parsed.arguments.map((arg, i) => (
+        <div
+          key={i}
+          className={`rounded-lg border ${config.cardBorder} ${config.cardBg} p-3`}
+          style={{
+            animation: `fade-in 0.3s ease-out ${i * 0.05}s both`,
+          }}
+        >
+          <div className="mb-1.5 flex items-center gap-2">
+            <span
+              className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${config.numberBg} text-xs font-bold ${config.numberText}`}
+            >
+              {arg.number}
+            </span>
+            <h4
+              className={`text-xs font-semibold ${config.chipText}`}
+            >
+              {arg.title}
+            </h4>
+          </div>
+          <p className="text-xs leading-relaxed text-court-text-dim">
+            <InlineText text={arg.body} />
+          </p>
+        </div>
+      ))}
+
+      {/* Conclusion */}
+      {parsed.conclusion && (
+        <div className="mt-1 flex items-start gap-2 rounded-lg border border-gold/20 bg-gold/5 p-3">
+          <ChevronRight className="mt-0.5 h-3 w-3 shrink-0 text-gold" />
+          <p className="text-xs font-medium leading-relaxed text-court-text">
+            <InlineText text={parsed.conclusion} />
+          </p>
+        </div>
+      )}
+
+      {isActive && (
+        <BlinkingCursor color={config.color} />
+      )}
+    </div>
+  );
+}
+
+function InlineText({ text }: { text: string }) {
   const parts = text.split(/(\[TOOL:[^\]]+\])/g);
   return (
     <>
@@ -170,12 +388,32 @@ function FormattedText({ text }: { text: string }) {
           return (
             <span
               key={i}
-              className="mx-0.5 inline-flex items-center rounded bg-evidence/10 px-1.5 py-0.5 text-xs font-mono text-evidence"
+              className="mx-0.5 inline-flex items-center rounded bg-evidence/10 px-1.5 py-0.5 align-text-bottom font-mono text-[10px] text-evidence"
               title={`Evidence: ${id}`}
             >
               {id}
             </span>
           );
+        }
+        // Also handle bare tool_XXXX references (no brackets)
+        const bareToolParts = part.split(
+          /(tool_[a-f0-9]{4,8})/gi
+        );
+        if (bareToolParts.length > 1) {
+          return bareToolParts.map((sub, j) => {
+            if (/^tool_[a-f0-9]{4,8}$/i.test(sub)) {
+              return (
+                <span
+                  key={`${i}-${j}`}
+                  className="mx-0.5 inline-flex items-center rounded bg-evidence/10 px-1.5 py-0.5 align-text-bottom font-mono text-[10px] text-evidence"
+                  title={`Evidence: ${sub}`}
+                >
+                  {sub}
+                </span>
+              );
+            }
+            return <span key={`${i}-${j}`}>{sub}</span>;
+          });
         }
         return <span key={i}>{part}</span>;
       })}

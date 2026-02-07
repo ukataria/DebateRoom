@@ -9,7 +9,8 @@ export type DebatePhase =
   | "DEFENSE_CLOSING"
   | "PROSECUTION_CLOSING"
   | "VERDICT"
-  | "EPISTEMIC_MAP";
+  | "EPISTEMIC_MAP"
+  | "COMPLETE";
 
 export type AgentRole =
   | "defense"
